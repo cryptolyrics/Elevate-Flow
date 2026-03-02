@@ -74,7 +74,18 @@ TEAM_CODE_ALIASES = {
     "TORONTO RAPTORS": "TOR",
     "UTAH JAZZ": "UTA",
     "WASHINGTON WIZARDS": "WAS",
+    "GS": "GSW",
+    "NO": "NOP",
+    "SA": "SAS",
+    "NY": "NYK",
+    "PHO": "PHX",
+    "UTA": "UTA",
+    "BKN": "BKN",
+    "BRK": "BKN",
+    "NJN": "BKN",
 }
+
+NAME_SUFFIX_TOKENS = {"jr", "sr", "ii", "iii", "iv", "v"}
 
 # Draftstars scoring weights
 POINTS_WEIGHT = 1.0
@@ -107,6 +118,18 @@ def _clean_label(value: str) -> str:
 
 def _clean_player_name(value: str) -> str:
     return re.sub(r"\s+", " ", str(value or "").strip().lower())
+
+
+def _canonical_person_name(value: str) -> str:
+    text = str(value or "").lower()
+    text = re.sub(r"[^a-z0-9\s]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        return ""
+    tokens = text.split(" ")
+    while tokens and tokens[-1] in NAME_SUFFIX_TOKENS:
+        tokens.pop()
+    return " ".join(tokens)
 
 
 def normalize_team_code(value: str) -> str:
@@ -433,6 +456,7 @@ def load_tank01_players_index(run_date: str, data_root: Path, max_lag_days: int 
     rows = body if isinstance(body, list) else []
 
     by_name: Dict[str, dict] = {}
+    by_canonical_team: Dict[Tuple[str, str], List[dict]] = {}
     by_id: Dict[str, dict] = {}
     team_count = 0
     for row in rows:
@@ -450,9 +474,14 @@ def load_tank01_players_index(run_date: str, data_root: Path, max_lag_days: int 
             "name": name,
             "team": team,
             "pos": str(row.get("pos", "")).strip().upper(),
+            "name_key": _clean_player_name(name),
+            "canonical_name": _canonical_person_name(name),
         }
         by_id[pid] = player_entry
         by_name[_clean_player_name(name)] = player_entry
+        canon = player_entry["canonical_name"]
+        if team and canon:
+            by_canonical_team.setdefault((team, canon), []).append(player_entry)
 
     return {
         "source": source,
@@ -462,6 +491,7 @@ def load_tank01_players_index(run_date: str, data_root: Path, max_lag_days: int 
         "mapped": len(by_name),
         "team_rows": team_count,
         "by_name": by_name,
+        "by_canonical_team": by_canonical_team,
         "by_id": by_id,
     }
 
@@ -608,19 +638,34 @@ def apply_tank01_player_mapping(df: pd.DataFrame, players_index: dict) -> Tuple[
 
     work = df.copy()
     by_name = players_index.get("by_name", {})
+    by_canonical_team = players_index.get("by_canonical_team", {})
     matches = 0
+    canonical_matches = 0
     work["Tank01PlayerID"] = ""
     work["Tank01Name"] = ""
     work["Tank01Team"] = ""
+    work["Tank01MatchType"] = ""
     work["NameKey"] = work["Name"].map(_clean_player_name)
+    work["CanonicalName"] = work["Name"].map(_canonical_person_name)
     for idx, row in work.iterrows():
         mapped = by_name.get(row["NameKey"])
+        match_type = "exact" if mapped else ""
+        if not mapped:
+            team = normalize_team_code(row.get("Team", ""))
+            canon = row.get("CanonicalName", "")
+            candidates = by_canonical_team.get((team, canon), []) if team and canon else []
+            if len(candidates) == 1:
+                mapped = candidates[0]
+                match_type = "canonical_team"
         if not mapped:
             continue
         work.at[idx, "Tank01PlayerID"] = mapped.get("player_id", "")
         work.at[idx, "Tank01Name"] = mapped.get("name", "")
         work.at[idx, "Tank01Team"] = mapped.get("team", "")
+        work.at[idx, "Tank01MatchType"] = match_type
         matches += 1
+        if match_type == "canonical_team":
+            canonical_matches += 1
 
     summary = {
         "source": players_index.get("source", ""),
@@ -628,8 +673,9 @@ def apply_tank01_player_mapping(df: pd.DataFrame, players_index: dict) -> Tuple[
         "matched": int(matches),
         "unmatched": int(len(work.index) - matches),
         "coverage_pct": round((matches / len(work.index)) * 100.0, 2) if len(work.index) else 0.0,
+        "canonical_matches": int(canonical_matches),
     }
-    return work.drop(columns=["NameKey"]), summary
+    return work.drop(columns=["NameKey", "CanonicalName"]), summary
 
 
 def apply_tank01_prop_projection_signal(

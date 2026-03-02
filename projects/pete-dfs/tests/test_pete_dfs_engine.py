@@ -287,6 +287,7 @@ class PeteDFSEngineTests(unittest.TestCase):
         candidates = self.pd.DataFrame(
             [
                 {"Name": "Jaylen Brown", "Position": "SG", "Salary": 12000, "Form": 40.0, "Playing Status": "", "Team": "BOS"},
+                {"Name": "Gary Payton", "Position": "PG", "Salary": 7800, "Form": 27.0, "Playing Status": "", "Team": "GS"},
                 {"Name": "Unknown Player", "Position": "PF", "Salary": 7000, "Form": 24.0, "Playing Status": "", "Team": "LAL"},
             ]
         )
@@ -295,25 +296,40 @@ class PeteDFSEngineTests(unittest.TestCase):
             "by_name": {
                 "jaylen brown": {"player_id": "111", "name": "Jaylen Brown", "team": "BOS", "pos": "SG"},
             },
+            "by_canonical_team": {
+                ("GSW", "gary payton"): [
+                    {
+                        "player_id": "222",
+                        "name": "Gary Payton II",
+                        "team": "GSW",
+                        "pos": "PG",
+                        "canonical_name": "gary payton",
+                    }
+                ]
+            },
             "by_id": {},
         }
         props_index = {
             "source": "/tmp/props.json",
             "games": 1,
-            "players_with_props": 1,
+            "players_with_props": 2,
             "by_player_id": {
-                "111": {"player_id": "111", "prop_fp": 46.0, "prop_bets": {"pts": "25.5", "reb": "6.5", "ast": "5.5"}}
+                "111": {"player_id": "111", "prop_fp": 46.0, "prop_bets": {"pts": "25.5", "reb": "6.5", "ast": "5.5"}},
+                "222": {"player_id": "222", "prop_fp": 29.0, "prop_bets": {"pts": "11.5", "reb": "4.5", "ast": "3.5"}},
             },
         }
 
         mapped, map_summary = self.module.apply_tank01_player_mapping(candidates, players_index)
-        self.assertEqual(map_summary["matched"], 1)
+        self.assertEqual(map_summary["matched"], 2)
+        self.assertEqual(map_summary["canonical_matches"], 1)
         self.assertEqual(mapped.iloc[0]["Tank01PlayerID"], "111")
+        self.assertEqual(mapped.iloc[1]["Tank01PlayerID"], "222")
+        self.assertEqual(mapped.iloc[1]["Tank01MatchType"], "canonical_team")
 
         adjusted, prop_summary = self.module.apply_tank01_prop_projection_signal(mapped, props_index, weight=0.2, cap_abs=8.0)
-        self.assertEqual(prop_summary["players_with_props"], 1)
+        self.assertEqual(prop_summary["players_with_props"], 2)
         self.assertGreater(float(adjusted.iloc[0]["Tank01PropAdj"]), 0)
-        self.assertTrue(self.pd.isna(adjusted.iloc[1]["Tank01PropFP"]))
+        self.assertTrue(self.pd.isna(adjusted.iloc[2]["Tank01PropFP"]))
 
     def test_tank01_loaders_fallback_to_prior_date(self):
         with tempfile.TemporaryDirectory() as tmpdir:

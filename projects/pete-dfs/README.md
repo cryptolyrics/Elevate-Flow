@@ -38,6 +38,7 @@ DFS engine reliability features:
   - Backtest summary: props vs boxscore files (`--tank01-backtest-days`)
   - Value detection: salary vs prop-implied FP edges in Mission Control payload
   - Live date lag support: auto-fallback to latest prior dated file (`--tank01-max-lag-days`, default 2)
+  - Name-matching fallback: canonical team+name match (handles suffix variants like `II/Jr`)
 
 ## Fixtures
 
