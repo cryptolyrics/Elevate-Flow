@@ -73,6 +73,66 @@ async function runCliWithFallback(
   }
 }
 
+async function runCliWithAttempts(
+  binary: string,
+  attempts: string[][],
+  timeoutMs: number,
+): Promise<string> {
+  const errors: string[] = [];
+  for (const args of attempts) {
+    try {
+      return await runCli(binary, args, timeoutMs);
+    } catch (err) {
+      errors.push(`${args.join(" ")} => ${(err as Error).message}`);
+    }
+  }
+  throw new Error(`All OpenClaw CLI attempts failed: ${errors.join(" | ")}`);
+}
+
+function parseRunsArray(output: string): any[] {
+  const trimmed = output.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    if (Array.isArray(parsed?.runs)) {
+      return parsed.runs;
+    }
+    if (Array.isArray(parsed?.items)) {
+      return parsed.items;
+    }
+    if (Array.isArray(parsed?.data)) {
+      return parsed.data;
+    }
+  } catch {
+    // Fallback for line-delimited JSON outputs.
+  }
+
+  const lineParsed = trimmed
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .filter((v): v is Record<string, unknown> => v !== null);
+
+  if (lineParsed.length > 0) {
+    return lineParsed;
+  }
+
+  throw new Error("Unable to parse OpenClaw runs output as JSON");
+}
+
 function normalizeRun(raw: any, fallbackJobId: string): RunRecord {
   const runId = String(raw.runId || raw.id || "");
   const jobId = String(raw.jobId || raw.job_id || fallbackJobId);
@@ -97,15 +157,20 @@ export class OpenClawCliProvider implements FetchProvider {
   async listRunsAfter(jobId: string, lastRunId?: string): Promise<RunRecord[]> {
     assertJobId(jobId);
 
-    const output = await runCliWithFallback(
+    const output = await runCliWithAttempts(
       this.openClawBin,
-      ["cron", "runs", "list", "--job", jobId, "--json"],
-      ["cron", "runs", "list", "--id", jobId, "--json"],
+      [
+        // Historical CLI variants.
+        ["cron", "runs", "list", "--job", jobId, "--json"],
+        ["cron", "runs", "list", "--id", jobId, "--json"],
+        // Current CLI (no --json, job filter via --id).
+        ["cron", "runs", "--id", jobId, "--limit", "200"],
+        ["cron", "runs", "--id", jobId],
+      ],
       this.timeoutMs,
     );
 
-    const parsed = JSON.parse(output);
-    const runsArray = Array.isArray(parsed) ? parsed : (parsed.runs || []);
+    const runsArray = parseRunsArray(output);
 
     const completed = runsArray
       .map((r: any) => normalizeRun(r, jobId))

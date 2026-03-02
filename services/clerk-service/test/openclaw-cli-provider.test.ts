@@ -11,12 +11,17 @@ function writeExecutableScript(contents: string): string {
 }
 
 describe("OpenClawCliProvider", () => {
-  test("falls back from --job/--run to --id", async () => {
+  test("falls back from legacy flags to current --id runs interface", async () => {
     const script = writeExecutableScript(`#!/bin/sh
 args="$*"
 
 if printf '%s' "$args" | grep -q -- "--job"; then
   echo "unknown flag: --job" >&2
+  exit 2
+fi
+
+if printf '%s' "$args" | grep -q -- "--json"; then
+  echo "unknown flag: --json" >&2
   exit 2
 fi
 
@@ -26,6 +31,11 @@ if printf '%s' "$args" | grep -q -- "--run"; then
 fi
 
 if printf '%s' "$args" | grep -q -- "cron runs list"; then
+  echo "unknown command: list" >&2
+  exit 2
+fi
+
+if printf '%s' "$args" | grep -q -- "cron runs --id"; then
   echo '[{"id":"run-1","job_id":"job-1","status":"completed","started_at":"2026-03-01T00:00:00Z"}]'
   exit 0
 fi
