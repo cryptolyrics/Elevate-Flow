@@ -77,7 +77,12 @@ function unwrapSessions(doc) {
   if (doc && typeof doc === "object" && Array.isArray(doc.sessions)) {
     return { shape: "object", sessions: doc.sessions };
   }
-  throw new Error("Unsupported sessions.json schema (expected array or { sessions: [] })");
+  // Handle keyed format: { "agent:main:main": {...}, "agent:main:vlad": {...} }
+  if (doc && typeof doc === "object" && !Array.isArray(doc)) {
+    const sessions = Object.entries(doc).map(([key, value]) => ({ key, ...value }));
+    return { shape: "keyed", sessions };
+  }
+  throw new Error("Unsupported sessions.json schema (expected array, { sessions: [] }, or keyed object)");
 }
 
 function parseTimestamp(value) {
@@ -204,9 +209,18 @@ function writePruned(doc, shape, keepRows, storePath) {
 
   if (shape === "array") {
     fs.writeFileSync(storePath, `${JSON.stringify(keepRows.map((r) => r.raw), null, 2)}\n`, "utf8");
-  } else {
+  } else if (shape === "object") {
     doc.sessions = keepRows.map((r) => r.raw);
     fs.writeFileSync(storePath, `${JSON.stringify(doc, null, 2)}\n`, "utf8");
+  } else if (shape === "keyed") {
+    // Reconstruct keyed format: { "agent:main:main": {...}, ... }
+    const pruned = {};
+    for (const row of keepRows) {
+      const key = row.key;
+      const { key: _k, index: _i, ageHours: _a, pinned: _p, active: _ac, ts: _t, raw: _r, ...sessionData } = row.raw;
+      pruned[key] = sessionData;
+    }
+    fs.writeFileSync(storePath, `${JSON.stringify(pruned, null, 2)}\n`, "utf8");
   }
 
   return backupPath;
