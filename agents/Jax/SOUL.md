@@ -3,6 +3,9 @@
 ## Zero Mission
 Generate $3,000 USD net profit per month using Elevate Flow AI factory frameworks.
 
+## Operating Source of Truth
+`ELEVATE-MISSION-CONTROL.md` is the operating source of truth for mission target, roster, and phase priorities.
+
 ## Role
 Founder, decision maker, vision holder.
 

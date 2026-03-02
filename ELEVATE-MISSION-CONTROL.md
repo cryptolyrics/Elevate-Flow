@@ -1,12 +1,15 @@
 # Elevate Flow — Mission Control
 
+## Operating Source of Truth
+This document is the operating source of truth for mission targets, active agent roster, and phase priorities.
+
 ## Mission
-Reach **$3,000 USD/week** in revenue by **June 2026** through focused validation, rapid product delivery, and disciplined growth loops.
+Reach **$3,000 USD/month** net profit by **June 2026** through focused validation, rapid product delivery, and disciplined growth loops.
 
 **North Stars**
-- Weekly revenue run-rate ≥ $3K
-- 2 validated offers with paying users
-- 4-week rolling retention ≥ 50% for flagship offer
+- Monthly net profit run-rate ≥ $3K
+- Mission Control MVP live with only Pete, Ali, and Coach endpoints
+- JJ token efficiency stabilized by reducing Telegram/OpenClaw thread bloat
 
 ---
 ## Org Chart (Mermaid)
@@ -14,64 +17,46 @@ Reach **$3,000 USD/week** in revenue by **June 2026** through focused validation
 graph TD
   Jax["Jax — Founder"] --> JJ["JJ — MiniMax COO"]
   JJ --> Scout["Scout — Market Validation (MiniMax)"]
-  JJ --> Bruce["Bruce — Product Architect (Codex)"]
   JJ --> Ali["Ali — Growth & Marketing (MiniMax)"]
   JJ --> Alan["Alan — Revenue Modeler (MiniMax)"]
-  JJ --> Frank["Frank — Risk & Compliance (MiniMax)"]
   JJ --> Vlad["Vlad — Head of Development (Codex)"]
-  JJ --> Coppa["Coppa — Security Council (Codex)"]
+  JJ --> BabyVlad["Baby Vlad — Junior Developer (MiniMax)"]
+  JJ --> Coppa["Coppa — Security + Compliance Council (Codex)"]
   JJ --> Pete["Pete — Sportsbet Operator (MiniMax)"]
   JJ --> Coach["Productivity Coach — ADHD Support (MiniMax)"]
 ```
 
 ---
 ## OKRs — Q1/Q2 2026
-**Objective:** Stand up a repeatable $3K/week revenue engine by June.
-- **KR1:** Surface *two* validated revenue streams with signed customers.
-- **KR2:** Ship MVP #1 (codename **Elevate Studio**) with onboarding + billing in four weeks.
-- **KR3:** Generate 50 qualified leads/week via repeatable channels.
-- **KR4:** Publish weekly accountability recap (Ops + Productivity Coach) with clear next-step commitments.
+**Objective:** Stand up a repeatable $3K/month net profit engine by June.
+- **KR1:** Ship Mission Control MVP with only Pete, Ali, and Coach endpoints.
+- **KR2:** Reduce JJ operational token waste from Telegram/OpenClaw thread bloat to an efficient baseline.
+- **KR3:** Define and lock mission flow with clear owner handoffs and escalation rules.
+- **KR4:** Maintain framework reliability baseline (`clerk-service` healthy, registry/snapshot validation green).
 
 ---
 ## Agent Playbooks
 | Agent | Model | Charter | KPI Focus | Immediate Next Action |
 |-------|-------|---------|-----------|------------------------|
-| **Scout** | MiniMax | Identify high-LTV problems & money flows; benchmark competitors/pricing. | 2 validated opportunities/week | Compile top 5 “$3K/week” plays by Mon. 24 Feb. |
-| **Bruce** | Codex | Define MVP scope, requirements, accountability cadence. | MVP spec signed off | Draft v1 product spec + dependency map. |
+| **Scout** | MiniMax | Identify high-LTV problems & money flows; benchmark competitors/pricing. | 2 validated opportunities/week | Compile top 5 “$3K/month” plays by Mon. 24 Feb. |
 | **Ali** | MiniMax | Growth loops, channels, offer messaging. | 50 qualified leads/week | Outline 3-channel test plan (email, communities, partnerships). |
 | **Alan** | MiniMax | Pricing, unit economics, cash runway. | Weekly revenue dashboard | Build simple revenue worksheet + breakeven chart. |
-| **Frank** | MiniMax | Compliance, platform policies, risk mitigation. | Risk register up to date | Audit planned revenue streams for compliance blockers. |
 | **Vlad** | Codex | Core dev + automation builds. | Sprint velocity \> 90% | Estimate engineering effort for MVP spec. |
-| **Coppa** | Codex | Tool safety, secrets, governance. | Zero unresolved safety incidents | Review current tool perms + plan audits (later). |
+| **Baby Vlad** | MiniMax | Execute scoped junior dev tasks under Vlad direction. | Time-to-ship on small fixes | Implement small endpoint/test/doc tasks and escalate unknowns in 2 hours. |
+| **Coppa** | Codex | Security and compliance governance, risk mitigation, and veto authority. | Zero unresolved security/compliance incidents | Review permissions, secrets handling, and compliance blockers before rollout. |
 | **Pete** | MiniMax | Sportsbet signals to boost Jax’s extra cash goals. | Weekly ROI report | Summarize current leagues + best edges. |
 | **Coach** | MiniMax | ADHD-aware accountability for Jax. | Weekly check-ins delivered | Draft weekly ritual (review/plan/celebrate). |
 | **JJ (COO)** | MiniMax | Day-to-day coordination, task tracking, status updates. | Mission dashboard accuracy | Stand up daily checklists + reminders. |
 
 ---
 ## Roadmap
-### Phase 1 — Alignment (Week 1)
-- Lock mission control + org chart ✅
-- Capture mission + OKRs ✅ (refine as needed)
-- Gather all mission transcript assets ➜ *pending*
-- Run MiniMax COO trial + daily ops scripting ➜ *in progress*
+### Phase 1 — Mission Control MVP + Ops Efficiency (Now)
+1. Build Mission Control MVP with only Pete, Ali, and Coach endpoints.
+2. Ensure JJ operates at efficient capacity by fixing Telegram/OpenClaw dashboard thread bloat and token waste.
+3. Define OKRs and mission flow clearly (owners, inputs, outputs, escalation).
 
-### Phase 2 — Market Validation (Weeks 1–2)
-- Scout delivers Top-5 opportunities list
-- Alan drafts monetization worksheets
-- Ali outlines acquisition experiments
-- Bruce maps MVP specs aligned to top opportunity
-
-### Phase 3 — Build & Launch (Weeks 3–5)
-- Vlad leads MVP build (with Bruce)
-- Coppa ensures safe tooling
-- Ali + Scout prep beta list
-- Alan sets up billing + KPI instrumentation
-
-### Phase 4 — Scale & Optimize (Weeks 6+)
-- Ali/Growth accelerate best channel
-- Alan tunes pricing packages
-- Frank ensures compliance for scale
-- Pete + Coach support ancillary goals
+### Phase 2 — TBC
+- Scope to be defined after Phase 1 outcomes and efficiency metrics are reviewed.
 
 ---
 ## Command Deck (JJ’s Daily Checklist)

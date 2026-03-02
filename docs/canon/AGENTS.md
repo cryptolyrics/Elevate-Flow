@@ -2,6 +2,8 @@
 
 This document is the constitutional source for how Elevate Flow operates.
 
+Mission and active operating priorities are defined in `ELEVATE-MISSION-CONTROL.md`.
+
 ## Architecture Planes
 
 ### Compute Plane

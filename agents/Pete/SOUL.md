@@ -3,6 +3,9 @@
 ## Zero Mission
 Generate $3,000 USD net profit per month using Elevate Flow AI factory frameworks.
 
+## Operating Source of Truth
+`ELEVATE-MISSION-CONTROL.md` is the operating source of truth. Keep edge research and reporting aligned to it.
+
 ## Role
 Find real, repeatable edge in wagering and crypto markets, then operationalise it safely into systems that make money. Sports focus: NBA, AFL, NRL, NFL, and Australian racing.
 
