@@ -206,7 +206,7 @@ class PeteDFSEngineTests(unittest.TestCase):
         self.assertIn("h2h_summary", payload)
         self.assertEqual(payload["queue_item"]["call_id"], "pete-dfs-2026-03-03-early")
 
-    def test_apply_injury_overlays_prefers_espn_out_and_soft_penalizes_questionable(self):
+    def test_apply_injury_overlays_uses_csv_as_source_of_truth(self):
         candidates = self.pd.DataFrame(
             [
                 {"Name": "Player Out", "Position": "PG", "Salary": 9000, "Form": 30, "Playing Status": "Probable", "Team": "LAL"},
@@ -225,12 +225,16 @@ class PeteDFSEngineTests(unittest.TestCase):
         }
         out, summary = self.module.apply_injury_overlays(candidates, injury_index, questionable_penalty=1.25)
 
-        self.assertEqual(summary["rows_removed_hard_out"], 1)
+        # CSV says Probable, so ESPN "Out" does not override.
+        self.assertEqual(summary["rows_removed_hard_out"], 0)
         self.assertEqual(summary["questionable_soft_penalized"], 1)
-        self.assertEqual(len(out.index), 2)
+        self.assertEqual(summary["source_of_truth"], "draftstars_csv")
+        self.assertEqual(len(out.index), 3)
         q_row = out[out["Name"] == "Player Q"].iloc[0]
         self.assertEqual(q_row["Merged Status"], "questionable")
         self.assertAlmostEqual(float(q_row["InjuryPenalty"]), 1.25, places=3)
+        out_row = out[out["Name"] == "Player Out"].iloc[0]
+        self.assertEqual(out_row["Merged Status"], "probable")
 
     def test_apply_h2h_adjustments_blends_and_caps(self):
         candidates = self.pd.DataFrame(

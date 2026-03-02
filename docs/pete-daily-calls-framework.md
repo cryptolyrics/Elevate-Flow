@@ -23,7 +23,8 @@ This framework codifies inputs, constraints, and learning updates so quality imp
   - ranked by projection delta + value score
 
 ## Current Model Behavior
-- Merges CSV + ESPN injury statuses.
+- Uses Draftstars CSV as injury source-of-truth.
+- Optionally augments from ESPN injury sync when available.
 - Hard excludes `OUT`, `DOUBTFUL`, `INACTIVE`.
 - Keeps `QUESTIONABLE` but applies projection penalty.
 - Projects player output from weighted form/FPPG + learned player adjustment.

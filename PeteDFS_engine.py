@@ -456,22 +456,19 @@ def apply_injury_overlays(
             espn_status = str(espn.get("status") or espn.get("detail") or "").strip()
             espn_cat = str(espn.get("category") or "available")
 
-        categories = {csv_cat, espn_cat}
-        if "out" in categories:
-            merged = "out"
-        elif "questionable" in categories:
-            merged = "questionable"
-        elif "probable" in categories:
-            merged = "probable"
+        # CSV is source-of-truth when it carries an explicit status.
+        if csv_cat in {"out", "questionable", "probable"}:
+            merged = csv_cat
         else:
-            merged = "available"
+            if espn_cat in {"out", "questionable", "probable"}:
+                merged = espn_cat
+            else:
+                merged = "available"
 
-        if espn and csv_cat != "available":
-            source = "both"
+        if csv_cat != "available":
+            source = "csv_primary"
         elif espn:
             source = "espn_only"
-        elif csv_cat != "available":
-            source = "csv_only"
         else:
             source = "none"
         source_mix[source] = source_mix.get(source, 0) + 1
@@ -494,6 +491,7 @@ def apply_injury_overlays(
         "rows_after_filter": int(len(filtered.index)),
         "questionable_soft_penalized": int(questionable_count),
         "source_mix": source_mix,
+        "source_of_truth": "draftstars_csv",
         "injury_feed_records": int(injury_index.get("count", 0)),
         "injury_feed_path": injury_index.get("source", ""),
     }
@@ -1077,8 +1075,8 @@ def main() -> None:
     parser.add_argument(
         "--refresh-espn-injuries",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Refresh ESPN injury feed before optimization (default: true)",
+        default=False,
+        help="Refresh ESPN injury feed before optimization (default: false; CSV remains source-of-truth)",
     )
     parser.add_argument(
         "--data-root",

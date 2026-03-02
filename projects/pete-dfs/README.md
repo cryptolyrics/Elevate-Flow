@@ -29,7 +29,8 @@ Hard risk filters for wagering:
 - includes `injury_source_summary`, `h2h_summary`, and per-player `selection_reasons`
 
 DFS engine reliability features:
-- ESPN injury sync + CSV merge (`--refresh-espn-injuries`)
+- Draftstars CSV is injury source-of-truth
+- optional ESPN injury sync + CSV merge (`--refresh-espn-injuries`, default off)
 - soft penalty for `QUESTIONABLE` players, hard block for `OUT/DOUBTFUL/INACTIVE`
 - capped H2H last-5 opponent adjustment from local data-lake (`--data-root`, `--h2h-*`)
 
