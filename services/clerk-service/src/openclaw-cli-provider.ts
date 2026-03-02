@@ -31,6 +31,22 @@ function runCli(binary: string, args: string[]): Promise<string> {
   });
 }
 
+async function runCliWithFallback(
+  binary: string,
+  primaryArgs: string[],
+  fallbackArgs: string[],
+): Promise<string> {
+  try {
+    return await runCli(binary, primaryArgs);
+  } catch (primaryErr) {
+    try {
+      return await runCli(binary, fallbackArgs);
+    } catch {
+      throw primaryErr;
+    }
+  }
+}
+
 function normalizeRun(raw: any, fallbackJobId: string): RunRecord {
   const runId = String(raw.runId || raw.id || "");
   const jobId = String(raw.jobId || raw.job_id || fallbackJobId);
@@ -52,14 +68,11 @@ export class OpenClawCliProvider implements FetchProvider {
   async listRunsAfter(jobId: string, lastRunId?: string): Promise<RunRecord[]> {
     assertJobId(jobId);
 
-    const output = await runCli(this.openClawBin, [
-      "cron",
-      "runs",
-      "list",
-      "--job",
-      jobId,
-      "--json",
-    ]);
+    const output = await runCliWithFallback(
+      this.openClawBin,
+      ["cron", "runs", "list", "--job", jobId, "--json"],
+      ["cron", "runs", "list", "--id", jobId, "--json"],
+    );
 
     const parsed = JSON.parse(output);
     const runsArray = Array.isArray(parsed) ? parsed : (parsed.runs || []);
@@ -83,13 +96,11 @@ export class OpenClawCliProvider implements FetchProvider {
 
   async getRunOutput(runId: string): Promise<string> {
     assertRunId(runId);
-    const output = await runCli(this.openClawBin, [
-      "cron",
-      "runs",
-      "output",
-      "--run",
-      runId,
-    ]);
+    const output = await runCliWithFallback(
+      this.openClawBin,
+      ["cron", "runs", "output", "--run", runId],
+      ["cron", "runs", "output", "--id", runId],
+    );
     return output;
   }
 }
