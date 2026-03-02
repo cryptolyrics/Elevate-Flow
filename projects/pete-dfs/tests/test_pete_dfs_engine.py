@@ -156,6 +156,44 @@ class PeteDFSEngineTests(unittest.TestCase):
         self.assertEqual(len(result.lineup), 9)
         self.assertIn("records", result.scrape)
 
+    def test_build_mission_control_payload_shapes_queue_item(self):
+        result = self.module.EngineResult(
+            success=True,
+            reason="ok",
+            lineup=[
+                {"Name": "PG A", "Position": "PG", "Team": "LAL", "Salary": 10000.0, "Form": 40.0, "RiskStd": 1.2},
+                {"Name": "C A", "Position": "C", "Team": "DEN", "Salary": 9700.0, "Form": 38.0, "RiskStd": 1.1},
+            ],
+            total_salary=19700.0,
+            projected_form=78.0,
+            backtest={"samples": 25, "mae": 6.2},
+            scrape={"records": 88},
+        )
+        payload = self.module.build_mission_control_payload(
+            result=result,
+            daily_csv_path="/tmp/draftstars.csv",
+            slot="early",
+            lookback_days=10,
+            salary_cap=100000,
+            risk_penalty=0.15,
+            train_days=7,
+            smokies=[{"player": "PG A", "delta": 3.2}],
+        )
+
+        self.assertEqual(payload["module"], "pete_dfs")
+        self.assertEqual(payload["queue_item"]["status"], "done")
+        self.assertEqual(payload["dfs_lineup"]["selected_count"], 2)
+        self.assertEqual(payload["dfs_lineup"]["salary_used"], 19700.0)
+        self.assertEqual(len(payload["dfs_lineup"]["smokies"]), 1)
+
+    def test_write_mission_control_payload_creates_json_file(self):
+        payload = {"module": "pete_dfs", "queue_item": {"status": "done"}}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target = pathlib.Path(tmpdir) / "out" / "pete-dfs.json"
+            saved = self.module.write_mission_control_payload(payload, target)
+            self.assertEqual(saved, target)
+            self.assertTrue(saved.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -134,6 +134,17 @@ python3 pete-nba-pipeline.py --dry-run --date 2026-03-02 --season 2026
 Run with DFS CSV:
 
 ```bash
+python3 PeteDFS_engine.py \
+  --date 2026-03-02 \
+  /path/to/draftstars.csv \
+  --lookback-days 10 \
+  --slot early \
+  --mission-control-json .pete-workspace/logs/Pete/2026-03-02-pete-dfs.json
+```
+
+Run full daily report pipeline:
+
+```bash
 python3 pete-nba-pipeline.py \
   --date 2026-03-02 \
   --season 2026 \

@@ -23,6 +23,10 @@ Hard risk filters for wagering:
 - `scripts/PeteDFS_engine.py`
 - `scripts/draftstars_final.py`
 
+`scripts/PeteDFS_engine.py` now emits Mission Control JSON output by default:
+- `OPENCLAW_WORKSPACE/logs/Pete/<YYYY-MM-DD>-pete-dfs.json`
+- override with `--mission-control-json <path>`
+
 ## Fixtures
 
 - `fixtures/sample_games.json`

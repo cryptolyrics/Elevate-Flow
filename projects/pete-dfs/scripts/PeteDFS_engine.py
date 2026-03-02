@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import re
 import time
 from dataclasses import dataclass
@@ -30,6 +32,8 @@ ESPN_SUMMARY_URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba
 
 ROSTER_SLOTS = {"PG": 2, "SG": 2, "SF": 2, "PF": 2, "C": 1}
 DEFAULT_SALARY_CAP = 100_000
+WORKSPACE = Path(os.environ.get("OPENCLAW_WORKSPACE", str(Path.cwd() / ".pete-workspace")))
+LOG_DIR = WORKSPACE / "logs" / "Pete"
 
 # Draftstars scoring weights
 POINTS_WEIGHT = 1.0
@@ -292,12 +296,14 @@ def load_and_clean_daily_csv(daily_csv_path: str) -> pd.DataFrame:
 
     status_col = next((colmap[c] for c in ["playingstatus", "status", "injurystatus"] if c in colmap), "")
     team_col = next((colmap[c] for c in ["team", "teamname"] if c in colmap), "")
+    fppg_col = next((colmap[c] for c in ["fppg", "avg", "average"] if c in colmap), "")
 
     cleaned = pd.DataFrame()
     cleaned["Name"] = frame[resolved["name"]]
     cleaned["Position"] = frame[resolved["position"]]
     cleaned["Salary"] = pd.to_numeric(frame[resolved["salary"]], errors="coerce")
     cleaned["Form"] = pd.to_numeric(frame[resolved["form"]], errors="coerce")
+    cleaned["FPPG"] = pd.to_numeric(frame[fppg_col], errors="coerce") if fppg_col else np.nan
     cleaned["Playing Status"] = frame[status_col] if status_col else ""
     cleaned["Team"] = frame[team_col] if team_col else ""
 
@@ -311,6 +317,133 @@ def load_and_clean_daily_csv(daily_csv_path: str) -> pd.DataFrame:
     cleaned = cleaned[~risk_mask].copy()
 
     return cleaned.reset_index(drop=True)
+
+
+def _to_builtin_rows(rows: List[dict]) -> List[dict]:
+    normalized: List[dict] = []
+    for row in rows:
+        clean: Dict[str, object] = {}
+        for key, value in row.items():
+            if isinstance(value, (np.floating, np.integer)):
+                clean[key] = float(value)
+            else:
+                clean[key] = value
+        normalized.append(clean)
+    return normalized
+
+
+def _slot_counts(lineup_rows: List[dict]) -> Dict[str, int]:
+    counts = {slot: 0 for slot in ROSTER_SLOTS}
+    for row in lineup_rows:
+        for slot in _position_set(str(row.get("Position", ""))):
+            counts[slot] += 1
+    return counts
+
+
+def _derive_smokies(candidate_df: pd.DataFrame, lineup_rows: List[dict], max_items: int = 3) -> List[dict]:
+    if candidate_df.empty or not lineup_rows:
+        return []
+
+    if "FPPG" not in candidate_df.columns:
+        return []
+
+    work = candidate_df.copy()
+    if work["FPPG"].isna().all():
+        return []
+
+    lineup_names = {_clean_player_name(row.get("Name", "")) for row in lineup_rows}
+    work["NameKey"] = work["Name"].map(_clean_player_name)
+    work["Delta"] = work["Form"] - work["FPPG"].fillna(work["Form"])
+    work = work[work["NameKey"].isin(lineup_names)].copy()
+    if work.empty:
+        return []
+
+    salary_cutoff = float(work["Salary"].quantile(0.45))
+    work = work[(work["Salary"] <= salary_cutoff) & (work["Delta"] > 0.0)].copy()
+    if work.empty:
+        return []
+
+    work = work.sort_values(["Delta", "Form"], ascending=[False, False]).head(max_items)
+    smokies: List[dict] = []
+    for _, row in work.iterrows():
+        smokies.append(
+            {
+                "player": str(row.get("Name", "")),
+                "team": str(row.get("Team", "")),
+                "position": str(row.get("Position", "")),
+                "salary": float(row.get("Salary", 0.0)),
+                "projection": float(row.get("Form", 0.0)),
+                "baseline": float(row.get("FPPG", 0.0)),
+                "delta": float(round(row.get("Delta", 0.0), 3)),
+            }
+        )
+    return smokies
+
+
+def build_mission_control_payload(
+    result: EngineResult,
+    daily_csv_path: str,
+    slot: str,
+    lookback_days: int,
+    salary_cap: int,
+    risk_penalty: float,
+    train_days: int,
+    smokies: Optional[List[dict]] = None,
+) -> dict:
+    generated_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    status = "done" if result.success else "blocked"
+    today = datetime.now().strftime("%Y-%m-%d")
+    call_id = f"pete-dfs-{today}-{slot}"
+
+    lineup_rows = _to_builtin_rows(result.lineup)
+    salary_used = float(result.total_salary or 0.0)
+    projected_form = float(result.projected_form or 0.0)
+    smokie_rows = smokies or []
+
+    return {
+        "schema_version": "1.0",
+        "module": "pete_dfs",
+        "queue_item": {
+            "call_id": call_id,
+            "owner": "Pete",
+            "due_at": f"{today}T09:00:00",
+            "status": status,
+            "priority": "high",
+            "blocker": None if result.success else result.reason,
+            "last_update": generated_at,
+        },
+        "config": {
+            "daily_csv_path": str(daily_csv_path),
+            "slot": slot,
+            "lookback_days": int(lookback_days),
+            "train_days": int(train_days),
+            "salary_cap": int(salary_cap),
+            "risk_penalty": float(risk_penalty),
+        },
+        "dfs_lineup": {
+            "success": bool(result.success),
+            "reason": result.reason,
+            "format": "2 PG, 2 SG, 2 SF, 2 PF, 1 C",
+            "selected_count": len(lineup_rows),
+            "slot_counts": _slot_counts(lineup_rows),
+            "salary_cap": int(salary_cap),
+            "salary_used": round(salary_used, 2),
+            "salary_remaining": round(float(salary_cap) - salary_used, 2),
+            "projected_form": round(projected_form, 3),
+            "lineup": lineup_rows,
+            "smokies": smokie_rows,
+        },
+        "model_quality": {
+            "backtest": result.backtest,
+            "scrape": result.scrape,
+        },
+    }
+
+
+def write_mission_control_payload(payload: dict, out_path: Path) -> Path:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return out_path
 
 
 def _position_set(raw_position: str) -> set:
@@ -456,10 +589,15 @@ def run_pete_dfs_engine(
     lineup_df = result["lineup"].sort_values(["Position", "Name"]).reset_index(drop=True)
     total_salary = float(lineup_df["Salary"].sum())
     projected_form = float(lineup_df["Form"].sum())
+    smokies = _derive_smokies(df, lineup_df.to_dict(orient="records"))
 
     print("\n--- FINAL OPTIMIZED LINEUP ---")
     print(lineup_df[["Position", "Name", "Team", "Salary", "Form", "RiskStd"]].to_string(index=False))
     print(f"\nTotal Salary: ${total_salary:,.0f} | Projected Form: {projected_form:.2f}")
+    if smokies:
+        print("Top Smokies:")
+        for idx, row in enumerate(smokies, 1):
+            print(f"{idx}. {row['player']} ({row['position']}) salary=${row['salary']:.0f} delta=+{row['delta']:.2f}")
     print(f"Backtest: {backtest}")
     print(f"Scrape: {scrape}")
 
@@ -477,19 +615,54 @@ def run_pete_dfs_engine(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run Pete DFS engine with ESPN history and lineup optimization")
     parser.add_argument("daily_csv_path", help="Path to Draftstars daily player CSV")
+    parser.add_argument("--date", default=datetime.now().strftime("%Y-%m-%d"), help="Run date in YYYY-MM-DD")
+    parser.add_argument("--slot", choices=["all", "early", "late"], default="all", help="Slate window label")
     parser.add_argument("--lookback-days", type=int, default=10, help="Days of ESPN history to ingest")
     parser.add_argument("--salary-cap", type=int, default=DEFAULT_SALARY_CAP, help="Salary cap for optimizer")
     parser.add_argument("--risk-penalty", type=float, default=0.15, help="Penalty multiplier for high-variance players")
     parser.add_argument("--train-days", type=int, default=7, help="Rolling train window days for backtest")
+    parser.add_argument(
+        "--mission-control-json",
+        default="",
+        help="Output path for Mission Control JSON payload (default: OPENCLAW_WORKSPACE/logs/Pete/<date>-pete-dfs.json)",
+    )
     args = parser.parse_args()
 
-    run_pete_dfs_engine(
+    result = run_pete_dfs_engine(
         args.daily_csv_path,
         lookback_days=max(1, args.lookback_days),
         salary_cap=max(1000, args.salary_cap),
         risk_penalty=max(0.0, args.risk_penalty),
         train_days=max(1, args.train_days),
     )
+
+    lineup_rows = result.lineup if result.success else []
+    smokies = []
+    if lineup_rows:
+        try:
+            candidate_df = load_and_clean_daily_csv(args.daily_csv_path)
+            smokies = _derive_smokies(candidate_df, lineup_rows)
+        except Exception:
+            smokies = []
+
+    payload = build_mission_control_payload(
+        result=result,
+        daily_csv_path=args.daily_csv_path,
+        slot=args.slot,
+        lookback_days=max(1, args.lookback_days),
+        salary_cap=max(1000, args.salary_cap),
+        risk_penalty=max(0.0, args.risk_penalty),
+        train_days=max(1, args.train_days),
+        smokies=smokies,
+    )
+
+    target = (
+        Path(args.mission_control_json)
+        if args.mission_control_json
+        else (LOG_DIR / f"{args.date}-pete-dfs.json")
+    )
+    saved = write_mission_control_payload(payload, target)
+    print(f"Mission Control payload written: {saved}")
 
 
 if __name__ == "__main__":
