@@ -8,3 +8,4 @@ services/clerk-service/dist/
 .clerk/
 .pete-workspace/
 projects/pete-dfs/.env
+projects/pete-dfs/data-lake/
