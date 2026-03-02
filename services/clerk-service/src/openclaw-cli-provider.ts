@@ -2,7 +2,7 @@ import { spawn } from "child_process";
 import { assertJobId, assertRunId } from "./ids";
 import { FetchProvider, RunRecord, sortRunsOldestFirst } from "./provider";
 
-function runCli(binary: string, args: string[]): Promise<string> {
+function runCli(binary: string, args: string[], timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(binary, args, {
       shell: false,
@@ -11,6 +11,16 @@ function runCli(binary: string, args: string[]): Promise<string> {
 
     let stdout = "";
     let stderr = "";
+    let settled = false;
+
+    const timeout = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      child.kill("SIGKILL");
+      reject(new Error(`OpenClaw CLI timed out after ${timeoutMs}ms: ${args.join(" ")}`));
+    }, timeoutMs);
 
     child.stdout.on("data", (d) => {
       stdout += String(d);
@@ -20,8 +30,21 @@ function runCli(binary: string, args: string[]): Promise<string> {
       stderr += String(d);
     });
 
-    child.on("error", (err) => reject(err));
+    child.on("error", (err) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timeout);
+      reject(err);
+    });
+
     child.on("close", (code) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timeout);
       if (code !== 0) {
         reject(new Error(`OpenClaw CLI failed (${code}): ${stderr.trim()}`));
         return;
@@ -35,14 +58,17 @@ async function runCliWithFallback(
   binary: string,
   primaryArgs: string[],
   fallbackArgs: string[],
+  timeoutMs: number,
 ): Promise<string> {
   try {
-    return await runCli(binary, primaryArgs);
+    return await runCli(binary, primaryArgs, timeoutMs);
   } catch (primaryErr) {
     try {
-      return await runCli(binary, fallbackArgs);
-    } catch {
-      throw primaryErr;
+      return await runCli(binary, fallbackArgs, timeoutMs);
+    } catch (fallbackErr) {
+      throw new Error(
+        `${(primaryErr as Error).message}; fallback failed: ${(fallbackErr as Error).message}`,
+      );
     }
   }
 }
@@ -63,7 +89,10 @@ function normalizeRun(raw: any, fallbackJobId: string): RunRecord {
 }
 
 export class OpenClawCliProvider implements FetchProvider {
-  constructor(private readonly openClawBin: string) {}
+  constructor(
+    private readonly openClawBin: string,
+    private readonly timeoutMs: number,
+  ) {}
 
   async listRunsAfter(jobId: string, lastRunId?: string): Promise<RunRecord[]> {
     assertJobId(jobId);
@@ -72,6 +101,7 @@ export class OpenClawCliProvider implements FetchProvider {
       this.openClawBin,
       ["cron", "runs", "list", "--job", jobId, "--json"],
       ["cron", "runs", "list", "--id", jobId, "--json"],
+      this.timeoutMs,
     );
 
     const parsed = JSON.parse(output);
@@ -100,6 +130,7 @@ export class OpenClawCliProvider implements FetchProvider {
       this.openClawBin,
       ["cron", "runs", "output", "--run", runId],
       ["cron", "runs", "output", "--id", runId],
+      this.timeoutMs,
     );
     return output;
   }

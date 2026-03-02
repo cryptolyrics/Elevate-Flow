@@ -57,6 +57,7 @@ describe("poller ordering and idempotency", () => {
       pollIntervalSec: 60,
       fetchMode: "cli",
       openClawBin: "openclaw",
+      openClawTimeoutMs: 15000,
       host: "127.0.0.1",
       port: 3008,
       jobs: [

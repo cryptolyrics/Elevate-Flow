@@ -16,6 +16,7 @@ export interface ClerkConfig {
   pollIntervalSec: number;
   fetchMode: FetchMode;
   openClawBin: string;
+  openClawTimeoutMs: number;
   host: string;
   port: number;
   jobs: JobConfig[];
@@ -49,6 +50,7 @@ export function loadConfig(configPath: string): ClerkConfig {
     pollIntervalSec: parsed.pollIntervalSec || 120,
     fetchMode: parsed.fetchMode || "cli",
     openClawBin: parsed.openClawBin || "openclaw",
+    openClawTimeoutMs: parsed.openClawTimeoutMs || 15000,
     host: parsed.host || "127.0.0.1",
     port: parsed.port || 3008,
     jobs: parsed.jobs,
@@ -56,6 +58,9 @@ export function loadConfig(configPath: string): ClerkConfig {
 
   if (cfg.pollIntervalSec < 15) {
     throw new Error("pollIntervalSec must be >= 15");
+  }
+  if (cfg.openClawTimeoutMs < 1000) {
+    throw new Error("openClawTimeoutMs must be >= 1000");
   }
   if (cfg.host !== "127.0.0.1") {
     throw new Error("host must be 127.0.0.1 for local security");

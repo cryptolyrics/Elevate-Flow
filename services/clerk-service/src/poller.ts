@@ -24,6 +24,7 @@ export interface PollSummary {
 export class Poller {
   private timer: NodeJS.Timeout | null = null;
   private lastSummary: PollSummary | null = null;
+  private active = false;
 
   constructor(
     private readonly config: ClerkConfig,
@@ -58,24 +59,35 @@ export class Poller {
   }
 
   start(): void {
-    if (this.timer) {
+    if (this.active) {
       return;
     }
+    this.active = true;
 
     const runLoop = async () => {
+      if (!this.active) {
+        return;
+      }
       try {
         await this.pollOnce();
       } catch (err) {
         this.writeDeadLetter("poller", "loop", err as Error, "");
+      } finally {
+        if (this.active) {
+          this.timer = setTimeout(runLoop, this.config.pollIntervalSec * 1000);
+        } else {
+          this.timer = null;
+        }
       }
     };
 
-    this.timer = setInterval(runLoop, this.config.pollIntervalSec * 1000);
+    this.timer = setTimeout(runLoop, this.config.pollIntervalSec * 1000);
   }
 
   stop(): void {
+    this.active = false;
     if (this.timer) {
-      clearInterval(this.timer);
+      clearTimeout(this.timer);
       this.timer = null;
     }
   }

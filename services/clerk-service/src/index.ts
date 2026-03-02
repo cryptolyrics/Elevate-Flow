@@ -7,11 +7,13 @@ async function main(): Promise<void> {
   const configPath = getConfigPath();
   const config = loadConfig(configPath);
 
-  const provider = new OpenClawCliProvider(config.openClawBin);
+  const provider = new OpenClawCliProvider(config.openClawBin, config.openClawTimeoutMs);
   const poller = new Poller(config, provider);
 
-  await poller.pollOnce();
   poller.start();
+  poller.pollOnce().catch((err) => {
+    console.error("Initial poll failed", err);
+  });
 
   const app = buildApp(config, poller);
   const server = app.listen(config.port, config.host, () => {

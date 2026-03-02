@@ -32,6 +32,7 @@ Config fields:
 - `pollIntervalSec`: polling interval in seconds (minimum 15)
 - `fetchMode`: `cli`
 - `openClawBin`: CLI binary name/path
+- `openClawTimeoutMs`: per-CLI call timeout in milliseconds (minimum 1000)
 - `host`: must be `127.0.0.1`
 - `port`: HTTP port
 - `jobs[]`: `jobId`, `agentId`, `workspace`
