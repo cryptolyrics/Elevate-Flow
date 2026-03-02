@@ -1,4 +1,4 @@
-# Elevate Flow — Mission Control
+# Zero Mission SOT (Source Of Truth)
 
 ## Mission
 Reach **$3,000 USD/week** in revenue by **June 2026** through focused validation, rapid product delivery, and disciplined growth loops.
@@ -31,6 +31,20 @@ graph TD
 - **KR2:** Ship MVP #1 (codename **Elevate Studio**) with onboarding + billing in four weeks.
 - **KR3:** Generate 50 qualified leads/week via repeatable channels.
 - **KR4:** Publish weekly accountability recap (Ops + Productivity Coach) with clear next-step commitments.
+
+### 48-Hour OKR Update (March 3-4, 2026 AEST)
+**Objective:** Rebuild Mission Control MVP and launch web version with Pete-first workflow.
+- **KR1:** Deploy rebuilt Mission Control with only two modules:
+  - Pete's Page (landing module)
+  - Agents Docs page (all agent docs accessible to Jax)
+- **KR2:** Pete's Page publishes by **9:00 AM AEST** with:
+  - Bet of the Day
+  - Parlay of the Day
+  - Logic summary for choice and parlay
+- **KR3:** DFS is excluded from MVP UI scope.
+- **KR4:** Pete's Page includes goal tracker for JJ/Jax updates:
+  - pick, odds, result, PnL, notes
+- **KR5:** Current Mission Control implementation is fully rebuildable; no legacy UI constraints.
 
 ---
 ## Agent Playbooks
