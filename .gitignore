@@ -6,3 +6,4 @@ __pycache__/
 .DS_Store
 services/clerk-service/dist/
 .clerk/
+.pete-workspace/
