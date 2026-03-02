@@ -2,6 +2,7 @@ import importlib.util
 import json
 import os
 import pathlib
+import sys
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
@@ -11,7 +12,10 @@ FIXTURES = ROOT / "projects" / "pete-dfs" / "fixtures"
 
 def load_module():
     spec = importlib.util.spec_from_file_location("pete_nba_pipeline", SCRIPT_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load module spec for {SCRIPT_PATH}")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 

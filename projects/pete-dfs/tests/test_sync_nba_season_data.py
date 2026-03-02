@@ -1,5 +1,6 @@
 import importlib.util
 import pathlib
+import sys
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
@@ -8,7 +9,10 @@ SCRIPT_PATH = ROOT / "projects" / "pete-dfs" / "scripts" / "sync_nba_season_data
 
 def load_module():
     spec = importlib.util.spec_from_file_location("sync_nba_season_data", SCRIPT_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load module spec for {SCRIPT_PATH}")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 

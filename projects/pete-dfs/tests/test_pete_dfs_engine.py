@@ -1,5 +1,6 @@
 import importlib.util
 import pathlib
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -16,6 +17,17 @@ PANDAS_AVAILABLE = _find_spec("pandas") is not None
 NUMPY_AVAILABLE = _find_spec("numpy") is not None
 
 
+def load_module():
+    spec = importlib.util.spec_from_file_location("pete_dfs_engine", SCRIPT_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load module spec for {SCRIPT_PATH}")
+    module = importlib.util.module_from_spec(spec)
+    # Python 3.9 dataclass/module inspection needs this entry before exec_module.
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 @unittest.skipUnless(PANDAS_AVAILABLE and NUMPY_AVAILABLE, "pandas/numpy not available in this environment")
 class PeteDFSEngineTests(unittest.TestCase):
     @classmethod
@@ -23,10 +35,7 @@ class PeteDFSEngineTests(unittest.TestCase):
         import pandas as pd
 
         cls.pd = pd
-        spec = importlib.util.spec_from_file_location("pete_dfs_engine", SCRIPT_PATH)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        cls.module = module
+        cls.module = load_module()
 
     def test_extract_player_fpts_from_summary_uses_labels(self):
         payload = {
