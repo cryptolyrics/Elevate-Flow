@@ -1,0 +1,73 @@
+{
+  "date": "2026-03-02",
+  "timezone": "Australia/Brisbane",
+  "jobs_run": 0,
+  "jobs_failed": 0,
+  "dead_letters": 0,
+  "agents": [
+    {
+      "agent_id": "jj",
+      "status": "OK",
+      "note": "Running daily digest and handoff"
+    },
+    {
+      "agent_id": "vlad",
+      "status": "OK",
+      "note": "Manual-only, awaiting tasks"
+    },
+    {
+      "agent_id": "baby-vlad",
+      "status": "OK",
+      "note": "Manual-only, job disabled in registry"
+    },
+    {
+      "agent_id": "ali",
+      "status": "OK",
+      "note": "Scheduled via task assignment"
+    },
+    {
+      "agent_id": "pete",
+      "status": "OK",
+      "note": "NO_BET mode until quant gating enabled"
+    },
+    {
+      "agent_id": "scout",
+      "status": "OK",
+      "note": "Morning scan enabled (8am)"
+    },
+    {
+      "agent_id": "coppa",
+      "status": "OK",
+      "note": "Via task assignment"
+    },
+    {
+      "agent_id": "coach",
+      "status": "OK",
+      "note": "Via task assignment"
+    }
+  ],
+  "blockers": [
+    {
+      "blocker_id": "CLERK_NOT_STARTED",
+      "description": "Clerk service must run locally on port 3008",
+      "severity": "HIGH"
+    },
+    {
+      "blocker_id": "OPENCLAW_NOT_SYNCED",
+      "description": "Generated snapshots not applied to OpenClaw",
+      "severity": "MEDIUM"
+    },
+    {
+      "blocker_id": "REGISTRY_NOT_VALIDATED",
+      "description": "npm run validate:registry not executed",
+      "severity": "MEDIUM"
+    }
+  ],
+  "decisions_needed": [
+    "Should Baby Vlad job be enabled?",
+    "Are the 4 active jobs correct for Day 1?",
+    "Confirm X-MC-KEY is set locally"
+  ],
+  "cost_notes": "No runtime costs today - framework setup only",
+  "runtime_notes": "Branch codex/framework-reset-v1 has all required docs"
+}
