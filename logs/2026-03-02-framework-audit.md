@@ -1,21 +1,20 @@
-# 2026-03-02 Framework Audit Session
+# 2026-03-02 Framework Reliability Audit
 
 ## Decisions
-- Focused on framework reliability only in `services/clerk-service` and registry validation.
-- Treated remote Clerk runtime as externally verified healthy via JJ.
-- Prioritized non-overlapping polling, CLI timeout protection, and startup resilience over UI work.
+- Prioritized framework reliability only (no Mission Control UI scope).
+- Preserved compatibility fallback (`--job/--run` to `--id`) and added CLI timeout/polling hardening.
+- Proceeded with merge-based branch sync to preserve hash-based checklist commits.
 
 ## Actions
-- Verified branch/remotes/working tree on `codex/framework-reset-v1`.
-- Installed missing root dependency and ran `npm run validate:registry` successfully.
-- Updated Clerk config schema with `openClawTimeoutMs` and validation guardrail.
-- Hardened OpenClaw CLI provider with per-call timeout and explicit fallback failure detail.
-- Switched poll scheduler from `setInterval` to sequential `setTimeout` loop to prevent overlap.
-- Changed startup to non-blocking initial poll (service can stay up even if first poll errors).
-- Added provider tests for fallback behavior and timeout failure mode.
-- Ran `npm test` and `npx tsc --noEmit` in `services/clerk-service`.
+- Verified branch/remotes/working tree and commit presence (`6c58aed`, `7b99ab2`, `5ea30dd`, `466541f`).
+- Validated registry and generated snapshots (`npm run validate:registry`).
+- Updated and tested clerk-service hardening (`5` suites, `15` tests).
+- Resolved merge conflicts in:
+  - `services/clerk-service/src/openclaw-cli-provider.ts`
+  - `logs/2026-03-02-framework-audit.md`
+  - `decisions/2026-03-02-framework-reliability.md`
 
 ## Outcomes
-- Registry and generated OpenClaw snapshots validated successfully.
-- Clerk service test suite passed (`5` suites, `15` tests).
-- Framework reliability improved for polling stability and external CLI failure handling.
+- Framework reliability controls are retained (timeout + non-overlapping poll loop + startup resilience).
+- Review findings from JJ were incorporated and branch history remained checklist-compatible.
+- Branch is ready for final JJ re-check and Vlad push sequence.

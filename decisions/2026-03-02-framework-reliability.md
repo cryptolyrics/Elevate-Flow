@@ -1,21 +1,21 @@
-# Decision Log - 2026-03-02
+# Decision Log - 2026-03-02 (Framework Reliability)
 
 ## Decision
-Implement additional Clerk framework reliability safeguards after the OpenClaw flag-compatibility patch.
+Adopt and keep the Clerk reliability hardening set on `codex/framework-reset-v1` while preserving compatibility with the remote branch fixes.
 
 ## Why
-- Poll overlap risk existed with `setInterval` when poll durations exceed interval.
-- External CLI calls had no timeout, creating risk of stalled poll loops.
-- Startup was coupled to first poll completion, reducing service survivability on transient upstream failures.
+- Poll overlap risk existed with `setInterval` when poll cycles exceeded interval.
+- External CLI calls had no timeout, creating a stall risk in polling loops.
+- Branch divergence introduced review drift where expected commits appeared missing.
 
 ## What Changed
-- Added `openClawTimeoutMs` config with validation floor (`>= 1000ms`).
-- Added timeout handling and richer fallback error context in OpenClaw CLI provider.
-- Reworked poll scheduler to sequential `setTimeout` scheduling.
-- Made startup non-blocking for initial poll.
-- Added tests for fallback compatibility and timeout failure behavior.
+- Kept compatibility fallback behavior for OpenClaw run commands (`--job/--run` to `--id`).
+- Added `openClawTimeoutMs` guardrail and timeout handling in CLI provider.
+- Reworked poll scheduling to sequential `setTimeout` flow.
+- Kept startup non-blocking for initial poll failure scenarios.
+- Merged remote review updates and resolved conflicts without rewriting required commit history.
 
 ## Expected Outcome
-- Improved resilience under OpenClaw CLI instability and long-running command scenarios.
-- Cleaner failure telemetry while preserving compatibility fallback behavior.
-- Lower risk of duplicate/overlapping polling side effects.
+- Stable polling behavior with reduced hang/overlap risk.
+- Clearer and deterministic reliability posture for JJ review and Vlad deployment.
+- Hash-based checklist commits remain traceable in branch history.
