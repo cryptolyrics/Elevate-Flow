@@ -1416,6 +1416,17 @@ def _prop_history_values(prop: dict, h2h_lookup: dict) -> List[float]:
     return h2h_lookup.get(f"{player_key}::{team_key}::{opp_key}::{market}", [])
 
 
+def _seed_history_from_line(line: float, samples: int = 5) -> List[float]:
+    anchor = max(0.0, safe_float(line, 0.0))
+    if anchor <= 0.0:
+        return []
+    multipliers = [0.96, 1.04, 0.98, 1.02, 1.00]
+    seeded = [round(anchor * m, 3) for m in multipliers[: max(1, samples)]]
+    while len(seeded) < samples:
+        seeded.append(round(anchor, 3))
+    return seeded[:samples]
+
+
 def _collect_local_recent_market_history(data_root: str, max_games: int = 5) -> dict:
     root = Path(data_root)
     lookup: Dict[str, List[Tuple[str, float]]] = {}
@@ -1584,6 +1595,7 @@ def load_tank01_prop_candidates(
     h2h_lookup = load_h2h_lookup(h2h_json_path)
     local_history = _collect_local_recent_market_history(data_root)
     candidates: List[dict] = []
+    synthetic_history_candidates = 0
     for game in games:
         if not isinstance(game, dict):
             continue
@@ -1612,6 +1624,7 @@ def load_tank01_prop_candidates(
                 if math.isnan(line):
                     continue
 
+                history_source = "h2h"
                 history = _prop_history_values(
                     {
                         "player": player,
@@ -1624,8 +1637,15 @@ def load_tank01_prop_candidates(
                 if len(history) < 5:
                     local_key = f"{player.lower()}::{normalize_team_key(team)}::{market}"
                     history = local_history.get(local_key, [])
+                    if len(history) >= 5:
+                        history_source = "local_recent"
+                if len(history) < 5:
+                    history = _seed_history_from_line(line, samples=5)
+                    history_source = "synthetic_line"
                 if len(history) < 5:
                     continue
+                if history_source == "synthetic_line":
+                    synthetic_history_candidates += 1
 
                 candidates.append(
                     {
@@ -1639,6 +1659,7 @@ def load_tank01_prop_candidates(
                         "last5": history[:5],
                         "game": f"{away} @ {home}",
                         "source": "tank01",
+                        "history_source": history_source,
                         "player_id": player_id,
                     }
                 )
@@ -1648,6 +1669,7 @@ def load_tank01_prop_candidates(
         "source_lag_days": int(lag_days),
         "candidates": len(candidates),
         "players_mapped": len(by_id),
+        "synthetic_history_candidates": synthetic_history_candidates,
     }
 
 
@@ -2176,6 +2198,7 @@ def main() -> None:
         f"- Prop source: {tank01_prop_meta.get('source', 'N/A')}\n"
         f"- Prop lag days: {tank01_prop_meta.get('source_lag_days', -1)}\n"
         f"- Prop candidates merged: {len(prop_candidates)}\n"
+        f"- Prop candidates (synthetic history): {tank01_prop_meta.get('synthetic_history_candidates', 0)}\n"
     )
 
     if args.dry_run:

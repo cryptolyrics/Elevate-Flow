@@ -268,6 +268,32 @@ class PetePipelineTests(unittest.TestCase):
             self.assertEqual(len(first["last5"]), 5)
             self.assertEqual(meta["source_lag_days"], 1)
 
+    def test_load_tank01_prop_candidates_falls_back_to_seeded_history(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            props_dir = root / "nba" / "betting-props"
+            players_dir = root / "nba" / "players"
+            props_dir.mkdir(parents=True, exist_ok=True)
+            players_dir.mkdir(parents=True, exist_ok=True)
+
+            sample_props = json.loads((FIXTURES / "sample_tank01_props.json").read_text())
+            sample_players = json.loads((FIXTURES / "sample_tank01_players.json").read_text())
+            (props_dir / "2026-03-02.json").write_text(json.dumps(sample_props), encoding="utf-8")
+            (players_dir / "2026-03-02.json").write_text(json.dumps(sample_players), encoding="utf-8")
+
+            candidates, meta = self.module.load_tank01_prop_candidates(
+                "2026-03-03",
+                str(root),
+                h2h_json_path="",
+                max_lag_days=2,
+                default_odds=1.9,
+            )
+            self.assertGreaterEqual(len(candidates), 1)
+            self.assertGreater(meta.get("synthetic_history_candidates", 0), 0)
+            first = candidates[0]
+            self.assertEqual(first.get("history_source"), "synthetic_line")
+            self.assertEqual(len(first.get("last5", [])), 5)
+
 
 if __name__ == "__main__":
     unittest.main()
