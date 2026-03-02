@@ -23,14 +23,7 @@ graph TD
 ```
 
 ---
-## OKRs — Q1/Q2 2026
-**Objective:** Stand up a repeatable $3K/week revenue engine by June.
-- **KR1:** Surface *two* validated revenue streams with signed customers.
-- **KR2:** Ship MVP #1 (codename **Elevate Studio**) with onboarding + billing in four weeks.
-- **KR3:** Generate 50 qualified leads/week via repeatable channels.
-- **KR4:** Publish weekly accountability recap (Ops + Productivity Coach) with clear next-step commitments.
-
-### 48-Hour OKR Update (March 3-4, 2026 AEST)
+## Active OKRs - 48 Hours (March 3-4, 2026 AEST)
 **Objective:** Rebuild Mission Control MVP and launch web version with Pete-first workflow.
 - **KR1:** Deploy rebuilt Mission Control with only two modules:
   - Pete's Page (landing module)
