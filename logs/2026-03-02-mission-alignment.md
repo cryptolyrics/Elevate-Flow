@@ -19,8 +19,11 @@
   - `agents/Vlad/SOUL.md`
   - `agents/baby-vlad/SOUL.md`
 - Updated `docs/canon/AGENTS.md` to reference Mission Control priorities.
+- Added explicit Mission Control vs canon scope hierarchy to remove source-of-truth ambiguity.
+- Removed Alan from Mission Control roster and playbooks.
 
 ## Outcomes
 - All active agents now explicitly reference the same operating document.
 - Roster and roadmap are aligned to current execution constraints.
-- Legacy references to Bruce/Frank and weekly target language were removed from updated mission docs.
+- Legacy references to Bruce/Alan/Frank and weekly target language were removed from updated mission docs.
+- Canon and Mission Control now define complementary scopes with an explicit precedence rule.

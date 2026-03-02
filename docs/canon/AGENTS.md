@@ -4,6 +4,11 @@ This document is the constitutional source for how Elevate Flow operates.
 
 Mission and active operating priorities are defined in `ELEVATE-MISSION-CONTROL.md`.
 
+## Scope Hierarchy
+- This canon controls framework architecture, contracts, and non-negotiable controls.
+- `ELEVATE-MISSION-CONTROL.md` controls mission target, active roster, and phase priorities.
+- Mission Control cannot override canon security or contract requirements.
+
 ## Architecture Planes
 
 ### Compute Plane

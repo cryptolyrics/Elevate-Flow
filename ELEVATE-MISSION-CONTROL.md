@@ -3,6 +3,11 @@
 ## Operating Source of Truth
 This document is the operating source of truth for mission targets, active agent roster, and phase priorities.
 
+## Scope Hierarchy
+- This file governs mission target, active roster, phase priorities, and execution flow.
+- `docs/canon/*` governs framework contracts, security rules, and non-negotiable operating constraints.
+- If wording conflicts, canon non-negotiables win and JJ updates this file to restore consistency.
+
 ## Mission
 Reach **$3,000 USD/month** net profit by **June 2026** through focused validation, rapid product delivery, and disciplined growth loops.
 
@@ -18,7 +23,6 @@ graph TD
   Jax["Jax — Founder"] --> JJ["JJ — MiniMax COO"]
   JJ --> Scout["Scout — Market Validation (MiniMax)"]
   JJ --> Ali["Ali — Growth & Marketing (MiniMax)"]
-  JJ --> Alan["Alan — Revenue Modeler (MiniMax)"]
   JJ --> Vlad["Vlad — Head of Development (Codex)"]
   JJ --> BabyVlad["Baby Vlad — Junior Developer (MiniMax)"]
   JJ --> Coppa["Coppa — Security + Compliance Council (Codex)"]
@@ -40,7 +44,6 @@ graph TD
 |-------|-------|---------|-----------|------------------------|
 | **Scout** | MiniMax | Identify high-LTV problems & money flows; benchmark competitors/pricing. | 2 validated opportunities/week | Compile top 5 “$3K/month” plays by Mon. 24 Feb. |
 | **Ali** | MiniMax | Growth loops, channels, offer messaging. | 50 qualified leads/week | Outline 3-channel test plan (email, communities, partnerships). |
-| **Alan** | MiniMax | Pricing, unit economics, cash runway. | Weekly revenue dashboard | Build simple revenue worksheet + breakeven chart. |
 | **Vlad** | Codex | Core dev + automation builds. | Sprint velocity \> 90% | Estimate engineering effort for MVP spec. |
 | **Baby Vlad** | MiniMax | Execute scoped junior dev tasks under Vlad direction. | Time-to-ship on small fixes | Implement small endpoint/test/doc tasks and escalate unknowns in 2 hours. |
 | **Coppa** | Codex | Security and compliance governance, risk mitigation, and veto authority. | Zero unresolved security/compliance incidents | Review permissions, secrets handling, and compliance blockers before rollout. |
