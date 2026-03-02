@@ -150,6 +150,7 @@ python3 pete-nba-pipeline.py \
   --draftstars-csv /path/to/draftstars.csv \
   --feedback-json /path/to/pete-feedback.json \
   --major-outs-json /path/to/major_outs.json
+```
 
 Run with player props and matchup history:
 
@@ -160,11 +161,20 @@ python3 pete-nba-pipeline.py \
   --props-json /path/to/props.json \
   --h2h-json /path/to/h2h-last5.json
 ```
+
+Run with ESPN injuries feed:
+
+```bash
+python3 pete-nba-pipeline.py \
+  --date 2026-03-02 \
+  --season 2026 \
+  --espn-injuries-json projects/pete-dfs/data-lake/nba/injuries/latest.json
 ```
 
 ## Config Files
 - Quant rules: `projects/pete-dfs/config/quant_rules.json`
 - Major outs: `projects/pete-dfs/config/major_outs.json`
+- ESPN injuries: `projects/pete-dfs/data-lake/nba/injuries/latest.json`
 
 ## Notes
 - Wagering remains fail-closed unless both are set:

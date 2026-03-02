@@ -24,6 +24,10 @@ Path pattern:
 
 [projects/pete-dfs/scripts/sync_nba_season_data.py](/Users/Jax/Documents/Cobault%20Website/elevate-flow/projects/pete-dfs/scripts/sync_nba_season_data.py)
 
+Injury sync script:
+
+[projects/pete-dfs/scripts/sync_espn_injuries.py](/Users/Jax/Documents/Cobault%20Website/elevate-flow/projects/pete-dfs/scripts/sync_espn_injuries.py)
+
 ## First Run (Full Season Backfill)
 
 ```bash
@@ -38,6 +42,14 @@ python3 projects/pete-dfs/scripts/sync_nba_season_data.py \
   --season-start-year 2025 \
   --weekly \
   --lookback-days 10
+```
+
+## Daily Injury Update (ESPN)
+
+```bash
+python3 projects/pete-dfs/scripts/sync_espn_injuries.py \
+  --date 2026-03-02 \
+  --out projects/pete-dfs/data-lake/nba/injuries/latest.json
 ```
 
 ## Granular Play Data
@@ -58,6 +70,12 @@ Run every Tuesday at 06:10 local:
 
 ```bash
 10 6 * * 2 cd /path/to/elevate-flow && /usr/bin/python3 projects/pete-dfs/scripts/sync_nba_season_data.py --season-start-year 2025 --weekly --lookback-days 10 >> logs/pete-data-sync.log 2>&1
+```
+
+Run daily injuries sync at 08:45 local:
+
+```bash
+45 8 * * * cd /path/to/elevate-flow && /usr/bin/python3 projects/pete-dfs/scripts/sync_espn_injuries.py --date $(date +\%F) --out projects/pete-dfs/data-lake/nba/injuries/latest.json >> logs/pete-injuries-sync.log 2>&1
 ```
 
 ## Safety Notes

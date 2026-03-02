@@ -155,6 +155,10 @@ class PetePipelineTests(unittest.TestCase):
         self.assertEqual(parlay["legs"], [])
         self.assertIn("NO_PROP_PARLAY", parlay["note"])
 
+    def test_load_espn_major_out_teams_from_fixture(self):
+        teams = self.module.load_espn_major_out_teams(str(FIXTURES / "sample_espn_injuries.json"))
+        self.assertIn("lal", teams)
+
 
 if __name__ == "__main__":
     unittest.main()

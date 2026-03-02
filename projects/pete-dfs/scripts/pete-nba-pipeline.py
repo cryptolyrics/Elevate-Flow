@@ -14,6 +14,7 @@ Environment:
 - PETE_QUANT_RULES_PATH (optional) custom quant rules JSON path
 - PETE_LEARNING_STATE_PATH (optional) custom learning state JSON path
 - PETE_MAJOR_OUTS_PATH (optional) JSON file of major injury outs
+- PETE_ESPN_INJURIES_PATH (optional) ESPN injury sync JSON path
 """
 
 import argparse
@@ -229,6 +230,15 @@ def _candidate_major_outs_paths() -> List[Path]:
     ]
 
 
+def _candidate_espn_injuries_paths() -> List[Path]:
+    script_dir = Path(__file__).resolve().parent
+    return [
+        Path(os.environ.get("PETE_ESPN_INJURIES_PATH", "")),
+        Path.cwd() / "projects" / "pete-dfs" / "data-lake" / "nba" / "injuries" / "latest.json",
+        script_dir.parent / "data-lake" / "nba" / "injuries" / "latest.json",
+    ]
+
+
 def learning_state_path() -> Path:
     env = os.environ.get("PETE_LEARNING_STATE_PATH", "").strip()
     if env:
@@ -299,6 +309,44 @@ def load_major_out_teams(override_path: Optional[str] = None) -> Set[str]:
             values.extend(str(v) for v in parsed)
 
         return {normalize_team_key(v) for v in values if str(v).strip()}
+
+    return set()
+
+
+def load_espn_major_out_teams(override_path: Optional[str] = None) -> Set[str]:
+    candidates: List[Path] = []
+    if override_path:
+        candidates.append(Path(override_path))
+    candidates.extend(_candidate_espn_injuries_paths())
+
+    for candidate in candidates:
+        if not candidate or str(candidate).strip() == "":
+            continue
+        if not candidate.exists():
+            continue
+
+        try:
+            parsed = json.loads(candidate.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+
+        # Expected schema from sync_espn_injuries.py:
+        # { "major_out_teams": ["LAL", ...], "teams": { "LAL": [{major_out:true}, ...] } }
+        major = parsed.get("major_out_teams", []) if isinstance(parsed, dict) else []
+        from_major = {normalize_team_key(v) for v in major if str(v).strip()}
+        if from_major:
+            return from_major
+
+        teams = parsed.get("teams", {}) if isinstance(parsed, dict) else {}
+        extracted = set()
+        if isinstance(teams, dict):
+            for team, items in teams.items():
+                if not isinstance(items, list):
+                    continue
+                if any(bool(item.get("major_out")) for item in items if isinstance(item, dict)):
+                    extracted.add(normalize_team_key(team))
+        if extracted:
+            return extracted
 
     return set()
 
@@ -1422,6 +1470,7 @@ def main() -> None:
     parser.add_argument("--slot", choices=["all", "early", "late"], default="all", help="Slate slot window")
     parser.add_argument("--feedback-json", default="", help="Path to feedback JSON for learning updates")
     parser.add_argument("--major-outs-json", default="", help="Override path to major-out teams JSON")
+    parser.add_argument("--espn-injuries-json", default="", help="Override path to ESPN injury sync JSON")
     parser.add_argument("--props-json", default="", help="Path to player props JSON payload")
     parser.add_argument("--h2h-json", default="", help="Path to optional last-5 matchup JSON payload")
     args = parser.parse_args()
@@ -1442,7 +1491,9 @@ def main() -> None:
 
     previous_date = (datetime.strptime(args.date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
     b2b_teams = fetch_teams_played_on_date(args.season, previous_date)
-    major_out_teams = load_major_out_teams(args.major_outs_json)
+    major_out_manual = load_major_out_teams(args.major_outs_json)
+    major_out_espn = load_espn_major_out_teams(args.espn_injuries_json)
+    major_out_teams = set(major_out_manual) | set(major_out_espn)
 
     lineup = build_best_lineup(
         games_data,

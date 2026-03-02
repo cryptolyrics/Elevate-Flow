@@ -52,4 +52,5 @@ Player-prop parlay inputs:
 
 Use local season storage for speed and reliability:
 - Script: `projects/pete-dfs/scripts/sync_nba_season_data.py`
+- Daily injuries: `projects/pete-dfs/scripts/sync_espn_injuries.py`
 - Ops doc: `docs/pete-local-nba-data-lake.md`

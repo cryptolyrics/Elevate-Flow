@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-03-02T08:55:00Z",
+  "date": "2026-03-02",
+  "source": "espn",
+  "teams": {
+    "LAL": [
+      {
+        "player": "LeBron James",
+        "status": "Out",
+        "detail": "ankle",
+        "major_out": true
+      }
+    ],
+    "DEN": [
+      {
+        "player": "Nikola Jokic",
+        "status": "Questionable",
+        "detail": "illness",
+        "major_out": false
+      }
+    ]
+  },
+  "major_out_teams": ["LAL"]
+}
