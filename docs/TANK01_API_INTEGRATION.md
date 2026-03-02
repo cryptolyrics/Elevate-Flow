@@ -84,14 +84,15 @@ projects/pete-dfs/data-lake/nba/players/2026-03-02.json
 
 ## Next Steps
 
-1. CodeX to build logic into PeteDFS_engine.py:
-   - Load Tank01 player list
-   - Match Draftstars CSV → Tank01 IDs
-   - Load betting props for today's games
-   - Calculate value scores (projected FP / salary)
-   - Filter by injury status
+1. Implemented in `PeteDFS_engine.py`:
+   - Load Tank01 player list and map Draftstars names -> `Tank01PlayerID`
+   - Load betting props and apply capped secondary projection adjustment
+   - Emit value detection edges (salary vs Tank01 prop FP)
+   - Emit Tank01 backtest summary (props vs local boxscore files when available)
+   - Keep Draftstars CSV as injury source-of-truth
 
-2. Re-run optimizer with Tank01 data as secondary signal
+2. Optional follow-up:
+   - Add scheduled pulls for `getNBAInjuryList`, `getNBAProjections`, and boxscore snapshots into `data-lake/nba/`
 
 ---
 

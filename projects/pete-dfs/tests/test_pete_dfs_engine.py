@@ -283,6 +283,38 @@ class PeteDFSEngineTests(unittest.TestCase):
             self.assertEqual(int(row["H2HSamples"]), 3)
             self.assertLessEqual(abs(float(row["H2HAdj"])), 4.0)
 
+    def test_tank01_mapping_and_props_adjustment(self):
+        candidates = self.pd.DataFrame(
+            [
+                {"Name": "Jaylen Brown", "Position": "SG", "Salary": 12000, "Form": 40.0, "Playing Status": "", "Team": "BOS"},
+                {"Name": "Unknown Player", "Position": "PF", "Salary": 7000, "Form": 24.0, "Playing Status": "", "Team": "LAL"},
+            ]
+        )
+        players_index = {
+            "source": "/tmp/players.json",
+            "by_name": {
+                "jaylen brown": {"player_id": "111", "name": "Jaylen Brown", "team": "BOS", "pos": "SG"},
+            },
+            "by_id": {},
+        }
+        props_index = {
+            "source": "/tmp/props.json",
+            "games": 1,
+            "players_with_props": 1,
+            "by_player_id": {
+                "111": {"player_id": "111", "prop_fp": 46.0, "prop_bets": {"pts": "25.5", "reb": "6.5", "ast": "5.5"}}
+            },
+        }
+
+        mapped, map_summary = self.module.apply_tank01_player_mapping(candidates, players_index)
+        self.assertEqual(map_summary["matched"], 1)
+        self.assertEqual(mapped.iloc[0]["Tank01PlayerID"], "111")
+
+        adjusted, prop_summary = self.module.apply_tank01_prop_projection_signal(mapped, props_index, weight=0.2, cap_abs=8.0)
+        self.assertEqual(prop_summary["players_with_props"], 1)
+        self.assertGreater(float(adjusted.iloc[0]["Tank01PropAdj"]), 0)
+        self.assertTrue(self.pd.isna(adjusted.iloc[1]["Tank01PropFP"]))
+
     def test_write_mission_control_payload_creates_json_file(self):
         payload = {"module": "pete_dfs", "queue_item": {"status": "done"}}
         with tempfile.TemporaryDirectory() as tmpdir:

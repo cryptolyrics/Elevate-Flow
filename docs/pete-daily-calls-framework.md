@@ -27,6 +27,8 @@ This framework codifies inputs, constraints, and learning updates so quality imp
 - Optionally augments from ESPN injury sync when available.
 - Hard excludes `OUT`, `DOUBTFUL`, `INACTIVE`.
 - Keeps `QUESTIONABLE` but applies projection penalty.
+- Integrates Tank01 player IDs + props as a secondary projection signal.
+- Emits value-detection edges (salary vs Tank01 prop-implied FP) in JSON payload.
 - Projects player output from weighted form/FPPG + learned player adjustment.
 - Applies capped opponent-specific H2H adjustment from last 5 meetings (when sample quality is sufficient).
 - Optimizes lineup using constrained slot-based search.
@@ -146,6 +148,9 @@ python3 PeteDFS_engine.py \
   --refresh-espn-injuries \
   --espn-injuries-json projects/pete-dfs/data-lake/nba/injuries/latest.json \
   --data-root projects/pete-dfs/data-lake \
+  --tank01-props-weight 0.2 \
+  --tank01-props-cap-abs 8 \
+  --tank01-backtest-days 21 \
   --h2h-weight 0.25 \
   --h2h-cap-abs 8 \
   --h2h-min-samples 3 \

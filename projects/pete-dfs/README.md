@@ -33,6 +33,10 @@ DFS engine reliability features:
 - optional ESPN injury sync + CSV merge (`--refresh-espn-injuries`, default off)
 - soft penalty for `QUESTIONABLE` players, hard block for `OUT/DOUBTFUL/INACTIVE`
 - capped H2H last-5 opponent adjustment from local data-lake (`--data-root`, `--h2h-*`)
+- Tank01 integration for all 3 tasks:
+  - DFS optimization: name->ID mapping + props projection blend (`--tank01-props-*`)
+  - Backtest summary: props vs boxscore files (`--tank01-backtest-days`)
+  - Value detection: salary vs prop-implied FP edges in Mission Control payload
 
 ## Fixtures
 

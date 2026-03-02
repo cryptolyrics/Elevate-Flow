@@ -34,6 +34,8 @@ ROSTER_SLOTS = {"PG": 2, "SG": 2, "SF": 2, "PF": 2, "C": 1}
 DEFAULT_SALARY_CAP = 100_000
 WORKSPACE = Path(os.environ.get("OPENCLAW_WORKSPACE", str(Path.cwd() / ".pete-workspace")))
 LOG_DIR = WORKSPACE / "logs" / "Pete"
+DEFAULT_TANK01_PROPS_WEIGHT = 0.20
+DEFAULT_TANK01_PROPS_CAP = 8.0
 
 INJURY_OUT_TAGS = {"out", "doubtful", "inactive", "ruled out"}
 INJURY_QUESTIONABLE_TAGS = {"questionable", "gtd", "game time decision"}
@@ -94,6 +96,9 @@ class EngineResult:
     scrape: dict
     injury_summary: Optional[dict] = None
     h2h_summary: Optional[dict] = None
+    tank01_summary: Optional[dict] = None
+    value_summary: Optional[dict] = None
+    tank01_backtest: Optional[dict] = None
 
 
 def _clean_label(value: str) -> str:
@@ -333,6 +338,423 @@ def compute_variance_map(history_df: pd.DataFrame) -> Dict[str, float]:
     return {_clean_player_name(name): float(value) for name, value in variance.items()}
 
 
+def _load_json_payload(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    try:
+        parsed = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(parsed, dict):
+            return parsed
+    except Exception:
+        pass
+    return {}
+
+
+def _candidate_tank01_players_paths(run_date: str, data_root: Path) -> List[Path]:
+    return [
+        data_root / "nba" / "players" / f"{run_date}.json",
+        Path.cwd() / "projects" / "pete-dfs" / "data-lake" / "nba" / "players" / f"{run_date}.json",
+    ]
+
+
+def _candidate_tank01_props_paths(run_date: str, data_root: Path) -> List[Path]:
+    return [
+        data_root / "nba" / "betting-props" / f"{run_date}.json",
+        Path.cwd() / "projects" / "pete-dfs" / "data-lake" / "nba" / "betting-props" / f"{run_date}.json",
+    ]
+
+
+def _candidate_tank01_injuries_paths(run_date: str, data_root: Path) -> List[Path]:
+    return [
+        data_root / "nba" / "injuries" / f"{run_date}.json",
+        Path.cwd() / "projects" / "pete-dfs" / "data-lake" / "nba" / "injuries" / f"{run_date}.json",
+    ]
+
+
+def _candidate_tank01_boxscore_paths(run_date: str, data_root: Path) -> List[Path]:
+    yyyymmdd = run_date.replace("-", "")
+    return [
+        data_root / "nba" / "boxscores" / f"{run_date}.json",
+        data_root / "nba" / "boxscores" / f"{yyyymmdd}.json",
+        Path.cwd() / "projects" / "pete-dfs" / "data-lake" / "nba" / "boxscores" / f"{run_date}.json",
+        Path.cwd() / "projects" / "pete-dfs" / "data-lake" / "nba" / "boxscores" / f"{yyyymmdd}.json",
+    ]
+
+
+def load_tank01_players_index(run_date: str, data_root: Path) -> dict:
+    payload = {}
+    source = ""
+    for path in _candidate_tank01_players_paths(run_date, data_root):
+        payload = _load_json_payload(path)
+        if payload:
+            source = str(path)
+            break
+    body = payload.get("body", []) if isinstance(payload, dict) else []
+    rows = body if isinstance(body, list) else []
+
+    by_name: Dict[str, dict] = {}
+    by_id: Dict[str, dict] = {}
+    team_count = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        pid = str(row.get("playerID", "")).strip()
+        name = str(row.get("longName") or row.get("name") or "").strip()
+        team = normalize_team_code(row.get("team", ""))
+        if team:
+            team_count += 1
+        if not pid or not name:
+            continue
+        player_entry = {
+            "player_id": pid,
+            "name": name,
+            "team": team,
+            "pos": str(row.get("pos", "")).strip().upper(),
+        }
+        by_id[pid] = player_entry
+        by_name[_clean_player_name(name)] = player_entry
+
+    return {
+        "source": source,
+        "rows": len(rows),
+        "mapped": len(by_name),
+        "team_rows": team_count,
+        "by_name": by_name,
+        "by_id": by_id,
+    }
+
+
+def _tank01_prop_to_fp(prop_bets: dict) -> float:
+    if not isinstance(prop_bets, dict):
+        return 0.0
+    points = _safe_float(prop_bets.get("pts"), 0.0)
+    rebounds = _safe_float(prop_bets.get("reb"), 0.0)
+    assists = _safe_float(prop_bets.get("ast"), 0.0)
+    steals = _safe_float(prop_bets.get("stl"), 0.0)
+    blocks = _safe_float(prop_bets.get("blk"), 0.0)
+    turnovers = _safe_float(prop_bets.get("turnover"), _safe_float(prop_bets.get("to"), 0.0))
+    return (
+        points * POINTS_WEIGHT
+        + rebounds * REBOUNDS_WEIGHT
+        + assists * ASSISTS_WEIGHT
+        + steals * STEALS_WEIGHT
+        + blocks * BLOCKS_WEIGHT
+        + turnovers * TURNOVERS_WEIGHT
+    )
+
+
+def load_tank01_props_index(run_date: str, data_root: Path) -> dict:
+    payload = {}
+    source = ""
+    for path in _candidate_tank01_props_paths(run_date, data_root):
+        payload = _load_json_payload(path)
+        if payload:
+            source = str(path)
+            break
+
+    body = payload.get("body", []) if isinstance(payload, dict) else []
+    games = body if isinstance(body, list) else []
+
+    by_player_id: Dict[str, dict] = {}
+    player_rows = 0
+    for game in games:
+        if not isinstance(game, dict):
+            continue
+        player_props = game.get("playerProps", []) if isinstance(game.get("playerProps"), list) else []
+        for row in player_props:
+            if not isinstance(row, dict):
+                continue
+            pid = str(row.get("playerID", "")).strip()
+            if not pid:
+                continue
+            prop_fp = _tank01_prop_to_fp(row.get("propBets", {}))
+            player_rows += 1
+            current = by_player_id.get(pid)
+            if current is None or prop_fp > current.get("prop_fp", 0.0):
+                by_player_id[pid] = {
+                    "player_id": pid,
+                    "prop_fp": round(prop_fp, 4),
+                    "prop_bets": row.get("propBets", {}),
+                    "game_id": str(game.get("gameID", "")),
+                    "home_team": normalize_team_code(game.get("homeTeam", "")),
+                    "away_team": normalize_team_code(game.get("awayTeam", "")),
+                }
+
+    return {
+        "source": source,
+        "games": len(games),
+        "player_rows": player_rows,
+        "players_with_props": len(by_player_id),
+        "by_player_id": by_player_id,
+    }
+
+
+def load_tank01_injury_index(run_date: str, data_root: Path) -> dict:
+    payload = {}
+    source = ""
+    for path in _candidate_tank01_injuries_paths(run_date, data_root):
+        payload = _load_json_payload(path)
+        if payload:
+            source = str(path)
+            break
+
+    body = payload.get("body", []) if isinstance(payload, dict) else []
+    rows = body if isinstance(body, list) else []
+
+    records: Dict[Tuple[str, str], dict] = {}
+    by_name: Dict[str, List[dict]] = {}
+
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        player = str(row.get("longName") or row.get("playerName") or row.get("name") or "").strip()
+        if not player:
+            continue
+        team = normalize_team_code(row.get("team", ""))
+        status = str(row.get("status") or row.get("injuryStatus") or row.get("designation") or "").strip()
+        detail = str(row.get("description") or row.get("injury") or "").strip()
+        category = classify_injury_status(f"{status} {detail}")
+        entry = {"player": player, "team": team, "status": status, "detail": detail, "category": category}
+        key = (team, _clean_player_name(player))
+        records[key] = entry
+        by_name.setdefault(_clean_player_name(player), []).append(entry)
+
+    return {"records": records, "name_records": by_name, "source": source, "count": len(records)}
+
+
+def merge_injury_indexes(primary: dict, secondary: dict) -> dict:
+    merged_records = dict(primary.get("records", {}))
+    merged_by_name: Dict[str, List[dict]] = {}
+
+    for idx in [primary, secondary]:
+        for key, items in idx.get("name_records", {}).items():
+            merged_by_name.setdefault(key, []).extend(items if isinstance(items, list) else [])
+        for key, row in idx.get("records", {}).items():
+            if key not in merged_records:
+                merged_records[key] = row
+
+    return {
+        "records": merged_records,
+        "name_records": merged_by_name,
+        "source": f"{primary.get('source', '')}|{secondary.get('source', '')}".strip("|"),
+        "count": len(merged_records),
+    }
+
+
+def apply_tank01_player_mapping(df: pd.DataFrame, players_index: dict) -> Tuple[pd.DataFrame, dict]:
+    if df.empty:
+        return df, {"csv_rows": 0, "matched": 0, "unmatched": 0, "source": players_index.get("source", "")}
+
+    work = df.copy()
+    by_name = players_index.get("by_name", {})
+    matches = 0
+    work["Tank01PlayerID"] = ""
+    work["Tank01Name"] = ""
+    work["Tank01Team"] = ""
+    work["NameKey"] = work["Name"].map(_clean_player_name)
+    for idx, row in work.iterrows():
+        mapped = by_name.get(row["NameKey"])
+        if not mapped:
+            continue
+        work.at[idx, "Tank01PlayerID"] = mapped.get("player_id", "")
+        work.at[idx, "Tank01Name"] = mapped.get("name", "")
+        work.at[idx, "Tank01Team"] = mapped.get("team", "")
+        matches += 1
+
+    summary = {
+        "source": players_index.get("source", ""),
+        "csv_rows": int(len(work.index)),
+        "matched": int(matches),
+        "unmatched": int(len(work.index) - matches),
+        "coverage_pct": round((matches / len(work.index)) * 100.0, 2) if len(work.index) else 0.0,
+    }
+    return work.drop(columns=["NameKey"]), summary
+
+
+def apply_tank01_prop_projection_signal(
+    df: pd.DataFrame,
+    props_index: dict,
+    weight: float,
+    cap_abs: float,
+) -> Tuple[pd.DataFrame, dict]:
+    if df.empty:
+        return df, {"players_with_props": 0, "players_adjusted": 0, "source": props_index.get("source", "")}
+
+    work = df.copy()
+    by_player_id = props_index.get("by_player_id", {})
+    with_props = 0
+    adjusted = 0
+    work["Tank01PropFP"] = np.nan
+    work["Tank01PropAdj"] = 0.0
+    work["Tank01ValueScore"] = np.nan
+
+    for idx, row in work.iterrows():
+        pid = str(row.get("Tank01PlayerID", "")).strip()
+        if not pid:
+            continue
+        prop_row = by_player_id.get(pid)
+        if not prop_row:
+            continue
+        with_props += 1
+        prop_fp = _safe_float(prop_row.get("prop_fp"), 0.0)
+        form = _safe_float(row.get("Form"), 0.0)
+        raw_delta = prop_fp - form
+        adj = max(-cap_abs, min(cap_abs, raw_delta * weight))
+        if abs(adj) > 0:
+            adjusted += 1
+        salary = max(1.0, _safe_float(row.get("Salary"), 1.0))
+        value_score = (prop_fp * 1000.0) / salary
+        work.at[idx, "Tank01PropFP"] = round(prop_fp, 4)
+        work.at[idx, "Tank01PropAdj"] = round(adj, 4)
+        work.at[idx, "Tank01ValueScore"] = round(value_score, 4)
+
+    summary = {
+        "source": props_index.get("source", ""),
+        "games": int(props_index.get("games", 0)),
+        "players_with_props_feed": int(props_index.get("players_with_props", 0)),
+        "players_with_props": int(with_props),
+        "players_adjusted": int(adjusted),
+        "weight": float(weight),
+        "cap_abs": float(cap_abs),
+    }
+    return work, summary
+
+
+def build_value_detection_summary(df: pd.DataFrame, max_items: int = 8) -> dict:
+    if df.empty:
+        return {"candidate_count": 0, "top_edges": []}
+    if "Tank01PropFP" not in df.columns:
+        return {"candidate_count": 0, "top_edges": []}
+
+    work = df.copy()
+    work = work.dropna(subset=["Tank01PropFP"]).copy()
+    if work.empty:
+        return {"candidate_count": 0, "top_edges": []}
+
+    work["ValueEdgeFP"] = work["Tank01PropFP"] - work["Form"].astype(float)
+    work["SalaryK"] = work["Salary"].astype(float) / 1000.0
+    work["ValueRankScore"] = work["ValueEdgeFP"] + ((12.0 - work["SalaryK"]).clip(lower=0.0) * 0.35)
+    ranked = work.sort_values(["ValueRankScore", "ValueEdgeFP"], ascending=[False, False]).head(max_items)
+
+    edges = []
+    for _, row in ranked.iterrows():
+        edges.append(
+            {
+                "player": str(row.get("Name", "")),
+                "team": str(row.get("Team", "")),
+                "position": str(row.get("Position", "")),
+                "salary": float(_safe_float(row.get("Salary"), 0.0)),
+                "form_projection": float(_safe_float(row.get("Form"), 0.0)),
+                "tank01_prop_fp": float(_safe_float(row.get("Tank01PropFP"), 0.0)),
+                "value_edge_fp": float(round(_safe_float(row.get("ValueEdgeFP"), 0.0), 3)),
+                "value_score": float(round(_safe_float(row.get("Tank01ValueScore"), 0.0), 3)),
+            }
+        )
+
+    return {"candidate_count": int(len(work.index)), "top_edges": edges}
+
+
+def _collect_tank01_stat_rows(node, sink: List[dict]) -> None:
+    if isinstance(node, dict):
+        keys = set(node.keys())
+        has_player = any(k in keys for k in ["playerID", "playerId", "player_id"])
+        has_stat = any(k in keys for k in ["pts", "points", "reb", "assists", "ast"])
+        if has_player and has_stat:
+            sink.append(node)
+        for value in node.values():
+            _collect_tank01_stat_rows(value, sink)
+    elif isinstance(node, list):
+        for item in node:
+            _collect_tank01_stat_rows(item, sink)
+
+
+def _tank01_actual_fp(row: dict) -> float:
+    points = _safe_float(row.get("pts", row.get("points")), 0.0)
+    rebounds = _safe_float(row.get("reb", row.get("rebounds")), 0.0)
+    assists = _safe_float(row.get("ast", row.get("assists")), 0.0)
+    steals = _safe_float(row.get("stl", row.get("steals")), 0.0)
+    blocks = _safe_float(row.get("blk", row.get("blocks")), 0.0)
+    turnovers = _safe_float(row.get("turnover", row.get("to", row.get("tov"))), 0.0)
+    return (
+        points * POINTS_WEIGHT
+        + rebounds * REBOUNDS_WEIGHT
+        + assists * ASSISTS_WEIGHT
+        + steals * STEALS_WEIGHT
+        + blocks * BLOCKS_WEIGHT
+        + turnovers * TURNOVERS_WEIGHT
+    )
+
+
+def _load_tank01_actuals_by_date(run_date: str, data_root: Path) -> Dict[str, float]:
+    payload = {}
+    for path in _candidate_tank01_boxscore_paths(run_date, data_root):
+        payload = _load_json_payload(path)
+        if payload:
+            break
+    if not payload:
+        return {}
+
+    rows: List[dict] = []
+    _collect_tank01_stat_rows(payload.get("body", payload), rows)
+    by_player_id: Dict[str, float] = {}
+    for row in rows:
+        pid = str(row.get("playerID") or row.get("playerId") or row.get("player_id") or "").strip()
+        if not pid:
+            continue
+        by_player_id[pid] = _tank01_actual_fp(row)
+    return by_player_id
+
+
+def run_tank01_props_backtest(data_root: Path, lookback_days: int = 21) -> dict:
+    props_dir = data_root / "nba" / "betting-props"
+    if not props_dir.exists():
+        return {"samples": 0, "dates_with_props": 0, "dates_with_actuals": 0, "mae": None, "rmse": None}
+
+    prop_files = sorted(props_dir.glob("*.json"))
+    if not prop_files:
+        return {"samples": 0, "dates_with_props": 0, "dates_with_actuals": 0, "mae": None, "rmse": None}
+
+    prop_files = prop_files[-max(1, lookback_days) :]
+    abs_errors: List[float] = []
+    sq_errors: List[float] = []
+    dates_with_actuals = 0
+
+    for path in prop_files:
+        run_date = path.stem
+        props_index = load_tank01_props_index(run_date, data_root)
+        if not props_index.get("by_player_id"):
+            continue
+        actuals = _load_tank01_actuals_by_date(run_date, data_root)
+        if not actuals:
+            continue
+        dates_with_actuals += 1
+        for pid, prop_row in props_index["by_player_id"].items():
+            if pid not in actuals:
+                continue
+            pred = _safe_float(prop_row.get("prop_fp"), 0.0)
+            actual = _safe_float(actuals.get(pid), 0.0)
+            err = actual - pred
+            abs_errors.append(abs(err))
+            sq_errors.append(err * err)
+
+    if not abs_errors:
+        return {
+            "samples": 0,
+            "dates_with_props": len(prop_files),
+            "dates_with_actuals": dates_with_actuals,
+            "mae": None,
+            "rmse": None,
+        }
+
+    return {
+        "samples": len(abs_errors),
+        "dates_with_props": len(prop_files),
+        "dates_with_actuals": dates_with_actuals,
+        "mae": round(float(np.mean(abs_errors)), 4),
+        "rmse": round(float(np.sqrt(np.mean(sq_errors))), 4),
+    }
+
+
 def _candidate_espn_injury_paths(explicit_path: str = "") -> List[Path]:
     script_dir = Path(__file__).resolve().parent
     return [
@@ -431,7 +853,7 @@ def apply_injury_overlays(
 
     records = injury_index.get("records", {})
     name_records = injury_index.get("name_records", {})
-    source_mix: Dict[str, int] = {"none": 0, "csv_only": 0, "espn_only": 0, "both": 0}
+    source_mix: Dict[str, int] = {"none": 0, "csv_primary": 0, "espn_only": 0}
     questionable_count = 0
     removed_count = 0
 
@@ -795,12 +1217,15 @@ def build_mission_control_payload(
                 "team": row.get("Team", ""),
                 "baseline_form": _safe_float(row.get("Form"), 0.0),
                 "h2h_adjustment": _safe_float(row.get("H2HAdj"), 0.0),
+                "tank01_prop_adjustment": _safe_float(row.get("Tank01PropAdj"), 0.0),
+                "tank01_prop_fp": _safe_float(row.get("Tank01PropFP"), 0.0),
                 "injury_penalty": _safe_float(row.get("InjuryPenalty"), 0.0),
                 "final_projection": _safe_float(row.get("SelectedProjection"), _safe_float(row.get("Form"), 0.0)),
                 "h2h_samples": int(_safe_float(row.get("H2HSamples"), 0.0)),
                 "opponent": row.get("Opponent", ""),
                 "merged_status": row.get("Merged Status", "available"),
                 "status_source": row.get("Status Source", "none"),
+                "tank01_player_id": row.get("Tank01PlayerID", ""),
             }
         )
 
@@ -844,6 +1269,9 @@ def build_mission_control_payload(
         },
         "injury_source_summary": result.injury_summary or {},
         "h2h_summary": result.h2h_summary or {},
+        "tank01_summary": result.tank01_summary or {},
+        "tank01_backtest": result.tank01_backtest or {},
+        "value_detection": result.value_summary or {},
     }
 
 
@@ -975,11 +1403,14 @@ def run_pete_dfs_engine(
     train_days: int = 7,
     espn_injuries_json: str = "",
     data_root: str = "",
-    refresh_injuries: bool = True,
+    refresh_injuries: bool = False,
     h2h_weight: float = 0.25,
     h2h_cap_abs: float = 8.0,
     h2h_min_samples: int = 3,
     questionable_penalty: float = 1.75,
+    tank01_props_weight: float = DEFAULT_TANK01_PROPS_WEIGHT,
+    tank01_props_cap_abs: float = DEFAULT_TANK01_PROPS_CAP,
+    tank01_backtest_days: int = 21,
 ) -> EngineResult:
     print(f"PETE DFS ENGINE: processing {daily_csv_path}")
     print(f"Collecting ESPN history over last {lookback_days} days...")
@@ -989,17 +1420,44 @@ def run_pete_dfs_engine(
     backtest = run_rolling_backtest(history_df, train_days=train_days)
 
     df = load_and_clean_daily_csv(daily_csv_path)
+    root = Path(data_root) if data_root else (Path.cwd() / "projects" / "pete-dfs" / "data-lake")
+
+    tank01_players_index = load_tank01_players_index(run_date, root)
+    df, tank01_players_summary = apply_tank01_player_mapping(df, tank01_players_index)
+
+    tank01_props_index = load_tank01_props_index(run_date, root)
+    df, tank01_props_summary = apply_tank01_prop_projection_signal(
+        df,
+        tank01_props_index,
+        weight=max(0.0, tank01_props_weight),
+        cap_abs=max(0.0, tank01_props_cap_abs),
+    )
+
+    tank01_injury_index = load_tank01_injury_index(run_date, root)
+    tank01_backtest = run_tank01_props_backtest(root, lookback_days=max(1, tank01_backtest_days))
+    tank01_summary = {
+        "players": tank01_players_summary,
+        "props": tank01_props_summary,
+        "injuries": {
+            "source": tank01_injury_index.get("source", ""),
+            "records": int(tank01_injury_index.get("count", 0)),
+        },
+    }
 
     injury_path = resolve_espn_injury_path(espn_injuries_json)
     refresh_status = {"ok": False, "path": str(injury_path), "skipped": True}
     if refresh_injuries:
         refresh_status = refresh_espn_injuries(run_date, injury_path)
         refresh_status["skipped"] = False
-    injury_index = load_espn_injury_index(injury_path)
+    espn_injury_index = load_espn_injury_index(injury_path)
+    injury_index = merge_injury_indexes(tank01_injury_index, espn_injury_index)
     df, injury_summary = apply_injury_overlays(df, injury_index, questionable_penalty=questionable_penalty)
     injury_summary["refresh"] = refresh_status
+    injury_summary["feeds"] = {
+        "tank01_records": int(tank01_injury_index.get("count", 0)),
+        "espn_records": int(espn_injury_index.get("count", 0)),
+    }
 
-    root = Path(data_root) if data_root else (Path.cwd() / "projects" / "pete-dfs" / "data-lake")
     df, h2h_summary = apply_h2h_adjustments(
         df,
         run_date=run_date,
@@ -1013,7 +1471,15 @@ def run_pete_dfs_engine(
         df["H2HAdj"] = 0.0
     if "InjuryPenalty" not in df.columns:
         df["InjuryPenalty"] = 0.0
-    df["AdjForm"] = df["Form"].astype(float) + df["H2HAdj"].astype(float) - df["InjuryPenalty"].astype(float)
+    if "Tank01PropAdj" not in df.columns:
+        df["Tank01PropAdj"] = 0.0
+    df["AdjForm"] = (
+        df["Form"].astype(float)
+        + df["H2HAdj"].astype(float)
+        + df["Tank01PropAdj"].astype(float)
+        - df["InjuryPenalty"].astype(float)
+    )
+    value_summary = build_value_detection_summary(df)
     result = optimize_dfs_lineup(df, variance_map, salary_cap=salary_cap, risk_penalty=risk_penalty)
 
     if not result["success"]:
@@ -1028,6 +1494,9 @@ def run_pete_dfs_engine(
             scrape=scrape,
             injury_summary=injury_summary,
             h2h_summary=h2h_summary,
+            tank01_summary=tank01_summary,
+            value_summary=value_summary,
+            tank01_backtest=tank01_backtest,
         )
 
     lineup_df = result["lineup"].sort_values(["Position", "Name"]).reset_index(drop=True)
@@ -1036,7 +1505,18 @@ def run_pete_dfs_engine(
     smokies = _derive_smokies(df, lineup_df.to_dict(orient="records"))
 
     print("\n--- FINAL OPTIMIZED LINEUP ---")
-    display_cols = ["Position", "Name", "Team", "Salary", "Form", "H2HAdj", "InjuryPenalty", "SelectedProjection", "RiskStd"]
+    display_cols = [
+        "Position",
+        "Name",
+        "Team",
+        "Salary",
+        "Form",
+        "H2HAdj",
+        "Tank01PropAdj",
+        "InjuryPenalty",
+        "SelectedProjection",
+        "RiskStd",
+    ]
     display_cols = [col for col in display_cols if col in lineup_df.columns]
     print(lineup_df[display_cols].to_string(index=False))
     print(f"\nTotal Salary: ${total_salary:,.0f} | Projected Form: {projected_form:.2f}")
@@ -1048,6 +1528,9 @@ def run_pete_dfs_engine(
     print(f"Scrape: {scrape}")
     print(f"Injury Summary: {injury_summary}")
     print(f"H2H Summary: {h2h_summary}")
+    print(f"Tank01 Summary: {tank01_summary}")
+    print(f"Tank01 Backtest: {tank01_backtest}")
+    print(f"Value Detection: {value_summary}")
 
     return EngineResult(
         success=True,
@@ -1059,6 +1542,9 @@ def run_pete_dfs_engine(
         scrape=scrape,
         injury_summary=injury_summary,
         h2h_summary=h2h_summary,
+        tank01_summary=tank01_summary,
+        value_summary=value_summary,
+        tank01_backtest=tank01_backtest,
     )
 
 
@@ -1087,6 +1573,9 @@ def main() -> None:
     parser.add_argument("--h2h-cap-abs", type=float, default=8.0, help="Absolute cap for H2H adjustment points")
     parser.add_argument("--h2h-min-samples", type=int, default=3, help="Minimum H2H samples before applying adjustment")
     parser.add_argument("--questionable-penalty", type=float, default=1.75, help="Projection penalty for questionable players")
+    parser.add_argument("--tank01-props-weight", type=float, default=DEFAULT_TANK01_PROPS_WEIGHT, help="Tank01 props blend weight into projection")
+    parser.add_argument("--tank01-props-cap-abs", type=float, default=DEFAULT_TANK01_PROPS_CAP, help="Absolute cap for Tank01 props adjustment points")
+    parser.add_argument("--tank01-backtest-days", type=int, default=21, help="How many recent Tank01 prop dates to include in backtest summary")
     parser.add_argument(
         "--mission-control-json",
         default="",
@@ -1108,6 +1597,9 @@ def main() -> None:
         h2h_cap_abs=max(0.0, args.h2h_cap_abs),
         h2h_min_samples=max(1, args.h2h_min_samples),
         questionable_penalty=max(0.0, args.questionable_penalty),
+        tank01_props_weight=max(0.0, args.tank01_props_weight),
+        tank01_props_cap_abs=max(0.0, args.tank01_props_cap_abs),
+        tank01_backtest_days=max(1, args.tank01_backtest_days),
     )
 
     lineup_rows = result.lineup if result.success else []
