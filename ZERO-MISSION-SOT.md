@@ -14,10 +14,8 @@ Reach **$3,000 USD/week** in revenue by **June 2026** through focused validation
 graph TD
   Jax["Jax — Founder"] --> JJ["JJ — MiniMax COO"]
   JJ --> Scout["Scout — Market Validation (MiniMax)"]
-  JJ --> Bruce["Bruce — Product Architect (Codex)"]
   JJ --> Ali["Ali — Growth & Marketing (MiniMax)"]
   JJ --> Alan["Alan — Revenue Modeler (MiniMax)"]
-  JJ --> Frank["Frank — Risk & Compliance (MiniMax)"]
   JJ --> Vlad["Vlad — Head of Development (Codex)"]
   JJ --> Coppa["Coppa — Security Council (Codex)"]
   JJ --> Pete["Pete — Sportsbet Operator (MiniMax)"]
@@ -46,15 +44,27 @@ graph TD
   - pick, odds, result, PnL, notes
 - **KR5:** Current Mission Control implementation is fully rebuildable; no legacy UI constraints.
 
+## Pete Betting Scoreboard (Weekly Success/Fail)
+- Starting funding (USD)
+- Total staked (USD)
+- Wins
+- Losses
+- Pushes
+- Gross return (USD)
+- Net PnL (USD)
+- Weekly ROI (%)
+- Hit rate (%)
+- Best Bet PnL (USD)
+- Parlay PnL (USD)
+- Owner: JJ updates daily from Jax bet/result entries
+
 ---
 ## Agent Playbooks
 | Agent | Model | Charter | KPI Focus | Immediate Next Action |
 |-------|-------|---------|-----------|------------------------|
 | **Scout** | MiniMax | Identify high-LTV problems & money flows; benchmark competitors/pricing. | 2 validated opportunities/week | Compile top 5 “$3K/week” plays by Mon. 24 Feb. |
-| **Bruce** | Codex | Define MVP scope, requirements, accountability cadence. | MVP spec signed off | Draft v1 product spec + dependency map. |
 | **Ali** | MiniMax | Growth loops, channels, offer messaging. | 50 qualified leads/week | Outline 3-channel test plan (email, communities, partnerships). |
 | **Alan** | MiniMax | Pricing, unit economics, cash runway. | Weekly revenue dashboard | Build simple revenue worksheet + breakeven chart. |
-| **Frank** | MiniMax | Compliance, platform policies, risk mitigation. | Risk register up to date | Audit planned revenue streams for compliance blockers. |
 | **Vlad** | Codex | Core dev + automation builds. | Sprint velocity \> 90% | Estimate engineering effort for MVP spec. |
 | **Coppa** | Codex | Tool safety, secrets, governance. | Zero unresolved safety incidents | Review current tool perms + plan audits (later). |
 | **Pete** | MiniMax | Sportsbet signals to boost Jax’s extra cash goals. | Weekly ROI report | Summarize current leagues + best edges. |
@@ -73,10 +83,10 @@ graph TD
 - Scout delivers Top-5 opportunities list
 - Alan drafts monetization worksheets
 - Ali outlines acquisition experiments
-- Bruce maps MVP specs aligned to top opportunity
+- Vlad maps MVP specs aligned to top opportunity
 
 ### Phase 3 — Build & Launch (Weeks 3–5)
-- Vlad leads MVP build (with Bruce)
+- Vlad leads MVP build
 - Coppa ensures safe tooling
 - Ali + Scout prep beta list
 - Alan sets up billing + KPI instrumentation
@@ -84,7 +94,7 @@ graph TD
 ### Phase 4 — Scale & Optimize (Weeks 6+)
 - Ali/Growth accelerate best channel
 - Alan tunes pricing packages
-- Frank ensures compliance for scale
+- Coppa ensures compliance for scale
 - Pete + Coach support ancillary goals
 
 ---
