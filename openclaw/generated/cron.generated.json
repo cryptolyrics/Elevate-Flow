@@ -2,13 +2,6 @@
   "version": 1,
   "jobs": [
     {
-      "jobId": "scout-morning-scan",
-      "agentId": "scout",
-      "cron": "0 8 * * *",
-      "timezone": "Australia/Brisbane",
-      "target": "isolated"
-    },
-    {
       "jobId": "pete-dfs-morning",
       "agentId": "pete",
       "cron": "0 9 * * *",

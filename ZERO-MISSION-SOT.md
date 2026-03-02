@@ -36,6 +36,19 @@ graph TD
   - pick, odds, result, PnL, notes
 - **KR5:** Current Mission Control implementation is fully rebuildable; no legacy UI constraints.
 
+## Active Agent Window (MVP Sprint)
+For the next 2 days (or until MVP completion), active agents are:
+- JJ
+- Vlad
+- Pete
+- Baby Vlad (only if needed, on-demand)
+
+Paused agents during this window:
+- Scout
+- Ali
+- Coppa
+- Coach
+
 ## Pete Betting Scoreboard (Weekly Success/Fail)
 - Starting funding (USD)
 - Total staked (USD)

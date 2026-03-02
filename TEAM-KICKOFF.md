@@ -17,13 +17,16 @@ Align all agents to the new registry-driven framework and deterministic operatio
 
 3. Confirm scheduling posture
 - Active scheduled jobs from registry:
-  - scout-morning-scan
   - pete-dfs-morning
   - jj-daily-digest
   - jj-health-alarm
 - Manual-only agents (no scheduled run):
   - vlad
   - baby-vlad
+  - scout
+  - ali
+  - coppa
+  - coach
 
 4. Confirm safety posture
 - No secrets in Git
@@ -54,8 +57,8 @@ Align all agents to the new registry-driven framework and deterministic operatio
 - Output must remain `NO_BET` until quant gating is explicitly enabled.
 
 ## Scout, Ali, Coach, Coppa
-- Continue domain outputs via assigned tasks.
-- Report blockers to JJ with explicit next-step requests.
+- Paused during MVP sprint window.
+- Do not run unless JJ explicitly reactivates.
 
 ## Operator Checklist (You)
 
