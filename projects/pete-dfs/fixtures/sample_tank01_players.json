@@ -1,0 +1,19 @@
+{
+  "statusCode": 200,
+  "body": [
+    {
+      "playerID": "111",
+      "longName": "Jaylen Brown",
+      "team": "BOS",
+      "teamID": "2",
+      "pos": "SG"
+    },
+    {
+      "playerID": "222",
+      "longName": "Jayson Tatum",
+      "team": "BOS",
+      "teamID": "2",
+      "pos": "SF"
+    }
+  ]
+}

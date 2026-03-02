@@ -24,7 +24,7 @@ import math
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Set
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 import requests
 
@@ -34,6 +34,21 @@ TODAY = datetime.now().strftime("%Y-%m-%d")
 DEFAULT_SEASON = str(datetime.now().year)
 NBA_API_BASE_URL = os.environ.get("NBA_API_BASE_URL", "https://v2.nba.api-sports.io").rstrip("/")
 NBA_API_TIMEOUT = int(os.environ.get("NBA_API_TIMEOUT", "30"))
+TANK01_MARKET_MAP = {
+    "pts": "PTS",
+    "reb": "REB",
+    "ast": "AST",
+    "stl": "STL",
+    "threes": "3PM",
+}
+TANK01_TEAM_ALIASES = {
+    "GS": "GSW",
+    "NO": "NOP",
+    "SA": "SAS",
+    "NY": "NYK",
+    "PHO": "PHX",
+    "BRK": "BKN",
+}
 
 
 def clamp(value: float, lower: float, upper: float) -> float:
@@ -42,6 +57,17 @@ def clamp(value: float, lower: float, upper: float) -> float:
 
 def normalize_team_key(name: str) -> str:
     return str(name or "").strip().lower()
+
+
+def normalize_team_code(name: str) -> str:
+    code = str(name or "").strip().upper()
+    if not code:
+        return ""
+    if code in TANK01_TEAM_ALIASES:
+        return TANK01_TEAM_ALIASES[code]
+    if len(code) == 3:
+        return code
+    return code
 
 
 def safe_float(value, default: float = 0.0) -> float:
@@ -210,6 +236,193 @@ def fetch_nba_odds(date: str, season: str) -> dict:
         note = f"{note}; errors={payload.get('errors')}"
 
     return {"games": games, "note": note}
+
+
+def _parse_dated_stem(path: Path) -> Optional[datetime]:
+    try:
+        return datetime.strptime(path.stem, "%Y-%m-%d")
+    except Exception:
+        return None
+
+
+def _resolve_dated_json(directory: Path, run_date: str, max_lag_days: int) -> Tuple[Optional[Path], int]:
+    target = datetime.strptime(run_date, "%Y-%m-%d")
+    exact = directory / f"{run_date}.json"
+    if exact.exists():
+        return exact, 0
+    if not directory.exists():
+        return None, -1
+
+    best_path: Optional[Path] = None
+    best_lag = 10**9
+    for path in directory.glob("*.json"):
+        parsed = _parse_dated_stem(path)
+        if parsed is None:
+            continue
+        lag = (target - parsed).days
+        if lag < 0 or lag > max(0, max_lag_days):
+            continue
+        if lag < best_lag:
+            best_lag = lag
+            best_path = path
+    if best_path is None:
+        return None, -1
+    return best_path, best_lag
+
+
+def _load_json(path: Path) -> dict:
+    if not path or not path.exists():
+        return {}
+    try:
+        parsed = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(parsed, dict):
+            return parsed
+    except Exception:
+        return {}
+    return {}
+
+
+def american_to_decimal(value: str) -> float:
+    text = str(value or "").strip()
+    if not text:
+        return 0.0
+    if text.startswith("+"):
+        n = safe_float(text[1:], 0.0)
+        return round(1.0 + (n / 100.0), 4) if n > 0 else 0.0
+    if text.startswith("-"):
+        n = safe_float(text[1:], 0.0)
+        return round(1.0 + (100.0 / n), 4) if n > 0 else 0.0
+    dec = safe_float(text, 0.0)
+    return dec if dec > 1.0 else 0.0
+
+
+def load_tank01_players_index(run_date: str, data_root: str, max_lag_days: int = 2, explicit_players_json: str = "") -> dict:
+    if explicit_players_json:
+        source_path = Path(explicit_players_json)
+        lag_days = 0
+    else:
+        source_path, lag_days = _resolve_dated_json(Path(data_root) / "nba" / "players", run_date, max_lag_days)
+    if source_path is None:
+        return {"by_id": {}, "source": "", "source_lag_days": -1}
+
+    payload = _load_json(source_path)
+    body = payload.get("body", []) if isinstance(payload, dict) else []
+    rows = body if isinstance(body, list) else []
+    by_id = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        player_id = str(row.get("playerID", "")).strip()
+        name = str(row.get("longName", "")).strip()
+        team = normalize_team_code(row.get("team", ""))
+        if player_id and name:
+            by_id[player_id] = {"name": name, "team": team}
+
+    return {"by_id": by_id, "source": str(source_path), "source_lag_days": int(lag_days)}
+
+
+def load_tank01_odds(run_date: str, data_root: str, max_lag_days: int = 2, explicit_props_json: str = "") -> dict:
+    if explicit_props_json:
+        source_path = Path(explicit_props_json)
+        lag_days = 0
+    else:
+        source_path, lag_days = _resolve_dated_json(Path(data_root) / "nba" / "betting-props", run_date, max_lag_days)
+    if source_path is None:
+        return {"games": [], "note": "Tank01 props file not found", "source": "", "source_lag_days": -1}
+
+    payload = _load_json(source_path)
+    body = payload.get("body", []) if isinstance(payload, dict) else []
+    rows = body if isinstance(body, list) else []
+    games = []
+
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        home = normalize_team_code(row.get("homeTeam", ""))
+        away = normalize_team_code(row.get("awayTeam", ""))
+        if not home or not away:
+            continue
+
+        normalized = {
+            "home": home,
+            "away": away,
+            "home_code": home,
+            "away_code": away,
+            "start": str(row.get("gameDate", "")),
+            "odds": {},
+            "source": "tank01",
+        }
+
+        books = row.get("sportsBooks", [])
+        if isinstance(books, list):
+            for book in books:
+                if not isinstance(book, dict):
+                    continue
+                odds = book.get("odds", {}) if isinstance(book.get("odds"), dict) else {}
+                home_ml = american_to_decimal(odds.get("homeTeamML", ""))
+                away_ml = american_to_decimal(odds.get("awayTeamML", ""))
+                if home_ml > 1.0:
+                    prev = safe_float(normalized["odds"].get(home), 0.0)
+                    normalized["odds"][home] = max(prev, home_ml)
+                if away_ml > 1.0:
+                    prev = safe_float(normalized["odds"].get(away), 0.0)
+                    normalized["odds"][away] = max(prev, away_ml)
+
+        if normalized["odds"]:
+            games.append(normalized)
+
+    return {
+        "games": games,
+        "note": f"Tank01 odds loaded: {len(games)} games",
+        "source": str(source_path),
+        "source_lag_days": int(lag_days),
+    }
+
+
+def merge_odds_data(primary: dict, secondary: dict) -> dict:
+    merged = {}
+
+    def key_for(game: dict) -> str:
+        home = normalize_team_key(game.get("home_code") or game.get("home"))
+        away = normalize_team_key(game.get("away_code") or game.get("away"))
+        return f"{away}@{home}"
+
+    for feed in [primary or {}, secondary or {}]:
+        for game in feed.get("games", []):
+            key = key_for(game)
+            if not key:
+                continue
+            if key not in merged:
+                merged[key] = {
+                    "home": game.get("home"),
+                    "away": game.get("away"),
+                    "home_code": game.get("home_code") or game.get("home"),
+                    "away_code": game.get("away_code") or game.get("away"),
+                    "start": game.get("start", ""),
+                    "odds": {},
+                    "sources": set(),
+                }
+            current = merged[key]
+            current["sources"].add(game.get("source", "api-sports"))
+            odds = game.get("odds", {})
+            if isinstance(odds, dict):
+                for team, odd in odds.items():
+                    price = safe_float(odd, 0.0)
+                    if price <= 1.0:
+                        continue
+                    prev = safe_float(current["odds"].get(team), 0.0)
+                    current["odds"][team] = max(prev, price)
+
+    games = []
+    for row in merged.values():
+        row["source"] = "+".join(sorted(row.pop("sources")))
+        if row["odds"]:
+            games.append(row)
+
+    return {
+        "games": games,
+        "note": f"Merged odds games: {len(games)}",
+    }
 
 
 def _candidate_rules_paths() -> List[Path]:
@@ -1083,6 +1296,45 @@ def _prop_history_values(prop: dict, h2h_lookup: dict) -> List[float]:
     return h2h_lookup.get(f"{player_key}::{team_key}::{opp_key}::{market}", [])
 
 
+def _collect_local_recent_market_history(data_root: str, max_games: int = 5) -> dict:
+    root = Path(data_root)
+    lookup: Dict[str, List[Tuple[str, float]]] = {}
+    pattern = "nba/season=*/processed/player_boxscore_jsonl/*.jsonl"
+    for file_path in root.glob(pattern):
+        try:
+            for line in file_path.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                row = json.loads(line)
+                if not isinstance(row, dict):
+                    continue
+                name = str(row.get("player_name", "")).strip().lower()
+                team = normalize_team_key(normalize_team_code(row.get("team", "")))
+                game_date = str(row.get("game_date", "")).strip()
+                if not name or not team or not game_date:
+                    continue
+                values = {
+                    "PTS": safe_float(row.get("points"), math.nan),
+                    "REB": safe_float(row.get("rebounds"), math.nan),
+                    "AST": safe_float(row.get("assists"), math.nan),
+                    "STL": safe_float(row.get("steals"), math.nan),
+                    "3PM": safe_float(row.get("three_pm"), math.nan),
+                }
+                for market, value in values.items():
+                    if math.isnan(value):
+                        continue
+                    key = f"{name}::{team}::{market}"
+                    lookup.setdefault(key, []).append((game_date, value))
+        except Exception:
+            continue
+
+    compact = {}
+    for key, rows in lookup.items():
+        rows.sort(key=lambda item: item[0], reverse=True)
+        compact[key] = [value for _, value in rows[:max_games]]
+    return compact
+
+
 def load_h2h_lookup(path: str) -> dict:
     if not path:
         return {}
@@ -1177,6 +1429,133 @@ def load_prop_candidates(props_json_path: str, h2h_json_path: str = "") -> List[
                 }
             )
     return candidates
+
+
+def load_tank01_prop_candidates(
+    run_date: str,
+    data_root: str,
+    h2h_json_path: str = "",
+    max_lag_days: int = 2,
+    default_odds: float = 1.87,
+    explicit_props_json: str = "",
+    explicit_players_json: str = "",
+) -> Tuple[List[dict], dict]:
+    players_index = load_tank01_players_index(
+        run_date,
+        data_root,
+        max_lag_days=max_lag_days,
+        explicit_players_json=explicit_players_json,
+    )
+    by_id = players_index.get("by_id", {})
+
+    if explicit_props_json:
+        props_path = Path(explicit_props_json)
+        lag_days = 0
+    else:
+        props_path, lag_days = _resolve_dated_json(Path(data_root) / "nba" / "betting-props", run_date, max_lag_days)
+    if props_path is None:
+        return [], {"source": "", "source_lag_days": -1, "candidates": 0}
+
+    payload = _load_json(props_path)
+    games = payload.get("body", []) if isinstance(payload, dict) else []
+    if not isinstance(games, list):
+        return [], {"source": str(props_path), "source_lag_days": int(lag_days), "candidates": 0}
+
+    h2h_lookup = load_h2h_lookup(h2h_json_path)
+    local_history = _collect_local_recent_market_history(data_root)
+    candidates: List[dict] = []
+    for game in games:
+        if not isinstance(game, dict):
+            continue
+        home = normalize_team_code(game.get("homeTeam", ""))
+        away = normalize_team_code(game.get("awayTeam", ""))
+        if not home or not away:
+            continue
+        props = game.get("playerProps", [])
+        if not isinstance(props, list):
+            continue
+
+        for row in props:
+            if not isinstance(row, dict):
+                continue
+            player_id = str(row.get("playerID", "")).strip()
+            player_meta = by_id.get(player_id, {})
+            player = str(player_meta.get("name", "")).strip()
+            team = normalize_team_code(player_meta.get("team", ""))
+            if not player or not team:
+                continue
+            opponent = away if normalize_team_key(team) == normalize_team_key(home) else home
+
+            bets = row.get("propBets", {}) if isinstance(row.get("propBets"), dict) else {}
+            for raw_market, market in TANK01_MARKET_MAP.items():
+                line = safe_float(bets.get(raw_market), math.nan)
+                if math.isnan(line):
+                    continue
+
+                history = _prop_history_values(
+                    {
+                        "player": player,
+                        "team": team,
+                        "opponent": opponent,
+                        "market": market,
+                    },
+                    h2h_lookup,
+                )
+                if len(history) < 5:
+                    local_key = f"{player.lower()}::{normalize_team_key(team)}::{market}"
+                    history = local_history.get(local_key, [])
+                if len(history) < 5:
+                    continue
+
+                candidates.append(
+                    {
+                        "player": player,
+                        "team": team,
+                        "opponent": opponent,
+                        "market": market,
+                        "line": line,
+                        "odds_over": max(1.01, safe_float(default_odds, 1.87)),
+                        "odds_under": max(1.01, safe_float(default_odds, 1.87)),
+                        "last5": history[:5],
+                        "game": f"{away} @ {home}",
+                        "source": "tank01",
+                        "player_id": player_id,
+                    }
+                )
+
+    return candidates, {
+        "source": str(props_path),
+        "source_lag_days": int(lag_days),
+        "candidates": len(candidates),
+        "players_mapped": len(by_id),
+    }
+
+
+def merge_prop_candidates(primary: List[dict], secondary: List[dict]) -> List[dict]:
+    merged = {}
+    for row in (primary or []) + (secondary or []):
+        if not isinstance(row, dict):
+            continue
+        key = (
+            str(row.get("player", "")).strip().lower(),
+            normalize_team_key(row.get("team", "")),
+            normalize_team_key(row.get("opponent", "")),
+            normalize_market(row.get("market")),
+        )
+        if not all(key):
+            continue
+        current = merged.get(key)
+        if current is None:
+            merged[key] = row
+            continue
+        # Prefer candidate with longer history; then higher available odds.
+        current_hist = len(current.get("last5", []))
+        new_hist = len(row.get("last5", []))
+        current_best_odds = max(safe_float(current.get("odds_over"), 0.0), safe_float(current.get("odds_under"), 0.0))
+        new_best_odds = max(safe_float(row.get("odds_over"), 0.0), safe_float(row.get("odds_under"), 0.0))
+        if (new_hist, new_best_odds) > (current_hist, current_best_odds):
+            merged[key] = row
+    return list(merged.values())
 
 
 def _prop_projection(candidate: dict, rules: dict, learning_state: dict, dfs_projection_map: dict) -> dict:
@@ -1473,6 +1852,21 @@ def main() -> None:
     parser.add_argument("--espn-injuries-json", default="", help="Override path to ESPN injury sync JSON")
     parser.add_argument("--props-json", default="", help="Path to player props JSON payload")
     parser.add_argument("--h2h-json", default="", help="Path to optional last-5 matchup JSON payload")
+    parser.add_argument(
+        "--tank01-enable",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Enable Tank01 odds/props integration for bet and parlay (default: true)",
+    )
+    parser.add_argument(
+        "--tank01-data-root",
+        default=str(Path.cwd() / "projects" / "pete-dfs" / "data-lake"),
+        help="Tank01 data-lake root",
+    )
+    parser.add_argument("--tank01-max-lag-days", type=int, default=2, help="Maximum dated-file lag for Tank01 snapshots")
+    parser.add_argument("--tank01-props-default-odds", type=float, default=1.87, help="Fallback decimal odds for Tank01 props when per-prop odds are unavailable")
+    parser.add_argument("--tank01-betting-props-json", default="", help="Optional explicit Tank01 betting-props JSON path")
+    parser.add_argument("--tank01-players-json", default="", help="Optional explicit Tank01 players JSON path")
     args = parser.parse_args()
 
     print(f"[Pete NBA] Starting pipeline for date={args.date} season={args.season} slot={args.slot}")
@@ -1488,6 +1882,21 @@ def main() -> None:
 
     games_data = fetch_nba_games(args.season, args.date)
     odds_data = fetch_nba_odds(args.date, args.season)
+    tank01_odds_meta = {"note": "Tank01 disabled"}
+    odds_for_wagering = odds_data
+    if args.tank01_enable:
+        tank01_odds = load_tank01_odds(
+            args.date,
+            args.tank01_data_root,
+            max_lag_days=max(0, args.tank01_max_lag_days),
+            explicit_props_json=args.tank01_betting_props_json,
+        )
+        tank01_odds_meta = {
+            "source": tank01_odds.get("source", ""),
+            "source_lag_days": int(tank01_odds.get("source_lag_days", -1)),
+            "games": len(tank01_odds.get("games", [])),
+        }
+        odds_for_wagering = merge_odds_data(odds_data, tank01_odds)
 
     previous_date = (datetime.strptime(args.date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
     b2b_teams = fetch_teams_played_on_date(args.season, previous_date)
@@ -1505,7 +1914,7 @@ def main() -> None:
     pivots = get_pivots(lineup)
     parlay = build_parlay(
         games_data,
-        odds_data,
+        odds_for_wagering,
         rules,
         learning_state=learning_state,
         no_b2b_teams=b2b_teams,
@@ -1513,13 +1922,26 @@ def main() -> None:
     )
     bet = get_bet_pick(
         games_data,
-        odds_data,
+        odds_for_wagering,
         rules,
         learning_state=learning_state,
         no_b2b_teams=b2b_teams,
         major_out_teams=major_out_teams,
     )
-    prop_candidates = load_prop_candidates(args.props_json, args.h2h_json)
+    prop_candidates_primary = load_prop_candidates(args.props_json, args.h2h_json)
+    tank01_prop_meta = {"candidates": 0, "source": "", "source_lag_days": -1}
+    tank01_prop_candidates = []
+    if args.tank01_enable:
+        tank01_prop_candidates, tank01_prop_meta = load_tank01_prop_candidates(
+            args.date,
+            args.tank01_data_root,
+            h2h_json_path=args.h2h_json,
+            max_lag_days=max(0, args.tank01_max_lag_days),
+            default_odds=safe_float(args.tank01_props_default_odds, 1.87),
+            explicit_props_json=args.tank01_betting_props_json,
+            explicit_players_json=args.tank01_players_json,
+        )
+    prop_candidates = merge_prop_candidates(prop_candidates_primary, tank01_prop_candidates)
     prop_parlay = build_player_prop_parlay(
         prop_candidates,
         rules,
@@ -1530,7 +1952,7 @@ def main() -> None:
 
     report = generate_report(
         games_data,
-        odds_data,
+        odds_for_wagering,
         lineup,
         pivots,
         parlay,
@@ -1541,6 +1963,16 @@ def main() -> None:
         b2b_count=len(b2b_teams),
         major_out_count=len(major_out_teams),
         learning_summary=learning_summary,
+    )
+
+    report += (
+        "\n## Tank01 Integration\n"
+        f"- Odds source: {tank01_odds_meta.get('source', 'N/A')}\n"
+        f"- Odds lag days: {tank01_odds_meta.get('source_lag_days', -1)}\n"
+        f"- Odds games loaded: {tank01_odds_meta.get('games', 0)}\n"
+        f"- Prop source: {tank01_prop_meta.get('source', 'N/A')}\n"
+        f"- Prop lag days: {tank01_prop_meta.get('source_lag_days', -1)}\n"
+        f"- Prop candidates merged: {len(prop_candidates)}\n"
     )
 
     if args.dry_run:

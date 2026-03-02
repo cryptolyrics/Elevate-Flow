@@ -3,6 +3,7 @@ import json
 import os
 import pathlib
 import sys
+import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
@@ -162,6 +163,65 @@ class PetePipelineTests(unittest.TestCase):
     def test_load_espn_major_out_teams_from_fixture(self):
         teams = self.module.load_espn_major_out_teams(str(FIXTURES / "sample_espn_injuries.json"))
         self.assertIn("lal", teams)
+
+    def test_load_tank01_odds_and_merge(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            props_dir = root / "nba" / "betting-props"
+            props_dir.mkdir(parents=True, exist_ok=True)
+            sample_props = json.loads((FIXTURES / "sample_tank01_props.json").read_text())
+            (props_dir / "2026-03-02.json").write_text(json.dumps(sample_props), encoding="utf-8")
+
+            tank01 = self.module.load_tank01_odds("2026-03-03", str(root), max_lag_days=2)
+            self.assertEqual(len(tank01["games"]), 1)
+            self.assertEqual(tank01["source_lag_days"], 1)
+
+            merged = self.module.merge_odds_data({"games": []}, tank01)
+            self.assertEqual(len(merged["games"]), 1)
+            game = merged["games"][0]
+            self.assertIn("BOS", game["odds"])
+            self.assertIn("MIL", game["odds"])
+            self.assertGreater(game["odds"]["BOS"], 1.0)
+
+    def test_load_tank01_prop_candidates_with_h2h(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            props_dir = root / "nba" / "betting-props"
+            players_dir = root / "nba" / "players"
+            props_dir.mkdir(parents=True, exist_ok=True)
+            players_dir.mkdir(parents=True, exist_ok=True)
+
+            sample_props = json.loads((FIXTURES / "sample_tank01_props.json").read_text())
+            sample_players = json.loads((FIXTURES / "sample_tank01_players.json").read_text())
+            (props_dir / "2026-03-02.json").write_text(json.dumps(sample_props), encoding="utf-8")
+            (players_dir / "2026-03-02.json").write_text(json.dumps(sample_players), encoding="utf-8")
+
+            h2h = {
+                "matchups": [
+                    {
+                        "player": "Jaylen Brown",
+                        "team": "BOS",
+                        "opponent": "MIL",
+                        "market": "PTS",
+                        "values": [27, 25, 31, 22, 29],
+                    }
+                ]
+            }
+            h2h_path = root / "h2h.json"
+            h2h_path.write_text(json.dumps(h2h), encoding="utf-8")
+
+            candidates, meta = self.module.load_tank01_prop_candidates(
+                "2026-03-03",
+                str(root),
+                h2h_json_path=str(h2h_path),
+                max_lag_days=2,
+                default_odds=1.9,
+            )
+            self.assertGreaterEqual(len(candidates), 1)
+            first = candidates[0]
+            self.assertIn(first["market"], {"PTS", "REB", "AST", "STL", "3PM"})
+            self.assertEqual(len(first["last5"]), 5)
+            self.assertEqual(meta["source_lag_days"], 1)
 
 
 if __name__ == "__main__":

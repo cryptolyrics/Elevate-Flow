@@ -38,6 +38,7 @@ This framework codifies inputs, constraints, and learning updates so quality imp
 
 ## Input
 - API-Sports games + odds feed.
+- Tank01 betting props snapshot for ML fallback/augmentation.
 - Optional major-out teams JSON.
 
 ## Required Output
@@ -55,6 +56,7 @@ This framework codifies inputs, constraints, and learning updates so quality imp
 
 ## Inputs
 - Player props payload (`--props-json`) covering full day slate.
+- Tank01 betting-props + players snapshots (auto-loaded from data-lake with date-lag fallback).
 - Optional matchup history payload (`--h2h-json`) with last five meetings.
 - Optional Draftstars CSV projection map to reinforce player confidence.
 
@@ -186,7 +188,10 @@ python3 pete-nba-pipeline.py \
   --date 2026-03-02 \
   --season 2026 \
   --props-json /path/to/props.json \
-  --h2h-json /path/to/h2h-last5.json
+  --h2h-json /path/to/h2h-last5.json \
+  --tank01-enable \
+  --tank01-data-root projects/pete-dfs/data-lake \
+  --tank01-max-lag-days 2
 ```
 
 Run with ESPN injuries feed:

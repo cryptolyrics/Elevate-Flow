@@ -23,6 +23,11 @@ Hard risk filters for wagering:
 - `scripts/PeteDFS_engine.py`
 - `scripts/draftstars_final.py`
 
+`scripts/pete-nba-pipeline.py` Tank01 support:
+- Bet of the Day: merges Tank01 moneyline odds with API-Sports odds
+- Parlay of the Day: ingests Tank01 player props (+ players mapping) into prop candidate engine
+- Date-lag fallback for AU runs via `--tank01-max-lag-days`
+
 `scripts/PeteDFS_engine.py` now emits Mission Control JSON output by default:
 - `OPENCLAW_WORKSPACE/logs/Pete/<YYYY-MM-DD>-pete-dfs.json`
 - override with `--mission-control-json <path>`

@@ -1,0 +1,34 @@
+{
+  "statusCode": 200,
+  "body": [
+    {
+      "gameID": "20260302_BOS@MIL",
+      "teamIDHome": "17",
+      "homeTeam": "MIL",
+      "awayTeam": "BOS",
+      "gameDate": "20260302",
+      "teamIDAway": "2",
+      "playerProps": [
+        {
+          "playerID": "111",
+          "propBets": {
+            "pts": "24.5",
+            "reb": "6.5",
+            "ast": "4.5",
+            "stl": "1.5",
+            "threes": "2.5"
+          }
+        }
+      ],
+      "sportsBooks": [
+        {
+          "sportsBook": "bet365",
+          "odds": {
+            "homeTeamML": "+115",
+            "awayTeamML": "-135"
+          }
+        }
+      ]
+    }
+  ]
+}
