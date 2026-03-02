@@ -35,6 +35,45 @@ DEFAULT_SALARY_CAP = 100_000
 WORKSPACE = Path(os.environ.get("OPENCLAW_WORKSPACE", str(Path.cwd() / ".pete-workspace")))
 LOG_DIR = WORKSPACE / "logs" / "Pete"
 
+INJURY_OUT_TAGS = {"out", "doubtful", "inactive", "ruled out"}
+INJURY_QUESTIONABLE_TAGS = {"questionable", "gtd", "game time decision"}
+INJURY_PROBABLE_TAGS = {"probable"}
+
+TEAM_CODE_ALIASES = {
+    "ATLANTA HAWKS": "ATL",
+    "BOSTON CELTICS": "BOS",
+    "BROOKLYN NETS": "BKN",
+    "CHARLOTTE HORNETS": "CHA",
+    "CHICAGO BULLS": "CHI",
+    "CLEVELAND CAVALIERS": "CLE",
+    "DALLAS MAVERICKS": "DAL",
+    "DENVER NUGGETS": "DEN",
+    "DETROIT PISTONS": "DET",
+    "GOLDEN STATE WARRIORS": "GSW",
+    "HOUSTON ROCKETS": "HOU",
+    "INDIANA PACERS": "IND",
+    "LOS ANGELES CLIPPERS": "LAC",
+    "LA CLIPPERS": "LAC",
+    "LOS ANGELES LAKERS": "LAL",
+    "LAKERS": "LAL",
+    "MEMPHIS GRIZZLIES": "MEM",
+    "MIAMI HEAT": "MIA",
+    "MILWAUKEE BUCKS": "MIL",
+    "MINNESOTA TIMBERWOLVES": "MIN",
+    "NEW ORLEANS PELICANS": "NOP",
+    "NEW YORK KNICKS": "NYK",
+    "OKLAHOMA CITY THUNDER": "OKC",
+    "ORLANDO MAGIC": "ORL",
+    "PHILADELPHIA 76ERS": "PHI",
+    "PHOENIX SUNS": "PHX",
+    "PORTLAND TRAIL BLAZERS": "POR",
+    "SACRAMENTO KINGS": "SAC",
+    "SAN ANTONIO SPURS": "SAS",
+    "TORONTO RAPTORS": "TOR",
+    "UTAH JAZZ": "UTA",
+    "WASHINGTON WIZARDS": "WAS",
+}
+
 # Draftstars scoring weights
 POINTS_WEIGHT = 1.0
 REBOUNDS_WEIGHT = 1.25
@@ -53,6 +92,8 @@ class EngineResult:
     projected_form: float
     backtest: dict
     scrape: dict
+    injury_summary: Optional[dict] = None
+    h2h_summary: Optional[dict] = None
 
 
 def _clean_label(value: str) -> str:
@@ -61,6 +102,30 @@ def _clean_label(value: str) -> str:
 
 def _clean_player_name(value: str) -> str:
     return re.sub(r"\s+", " ", str(value or "").strip().lower())
+
+
+def normalize_team_code(value: str) -> str:
+    text = str(value or "").strip().upper()
+    if not text:
+        return ""
+    if text in TEAM_CODE_ALIASES:
+        return TEAM_CODE_ALIASES[text]
+    if len(text) == 3 and text.isalpha():
+        return text
+    return TEAM_CODE_ALIASES.get(text, text[:3])
+
+
+def classify_injury_status(status_text: str) -> str:
+    text = str(status_text or "").strip().lower()
+    if not text:
+        return "available"
+    if any(tag in text for tag in INJURY_OUT_TAGS):
+        return "out"
+    if any(tag in text for tag in INJURY_QUESTIONABLE_TAGS):
+        return "questionable"
+    if any(tag in text for tag in INJURY_PROBABLE_TAGS):
+        return "probable"
+    return "available"
 
 
 def _safe_float(value, default: float = 0.0) -> float:
@@ -268,6 +333,334 @@ def compute_variance_map(history_df: pd.DataFrame) -> Dict[str, float]:
     return {_clean_player_name(name): float(value) for name, value in variance.items()}
 
 
+def _candidate_espn_injury_paths(explicit_path: str = "") -> List[Path]:
+    script_dir = Path(__file__).resolve().parent
+    return [
+        Path(explicit_path) if explicit_path else Path(""),
+        Path.cwd() / "projects" / "pete-dfs" / "data-lake" / "nba" / "injuries" / "latest.json",
+        script_dir.parent / "data-lake" / "nba" / "injuries" / "latest.json",
+    ]
+
+
+def resolve_espn_injury_path(explicit_path: str = "") -> Path:
+    for candidate in _candidate_espn_injury_paths(explicit_path):
+        if not candidate or str(candidate).strip() == "":
+            continue
+        if candidate.exists():
+            return candidate
+    return (
+        Path(explicit_path)
+        if explicit_path and str(explicit_path).strip() != ""
+        else (Path.cwd() / "projects" / "pete-dfs" / "data-lake" / "nba" / "injuries" / "latest.json")
+    )
+
+
+def refresh_espn_injuries(run_date: str, out_path: Path) -> dict:
+    try:
+        import importlib.util
+        import sys
+
+        script_path = Path(__file__).resolve().parent / "sync_espn_injuries.py"
+        spec = importlib.util.spec_from_file_location("sync_espn_injuries", script_path)
+        if spec is None or spec.loader is None:
+            return {"ok": False, "error": "sync_espn_injuries spec unavailable", "path": str(out_path)}
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        module.sync_espn_injuries(target_date=run_date, out_path=out_path, sleep_ms=0)
+        return {"ok": True, "path": str(out_path)}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc), "path": str(out_path)}
+
+
+def load_espn_injury_index(path: Path) -> dict:
+    if not path.exists():
+        return {"records": {}, "name_records": {}, "source": str(path), "count": 0}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"records": {}, "name_records": {}, "source": str(path), "count": 0}
+
+    teams = payload.get("teams", {}) if isinstance(payload, dict) else {}
+    records: Dict[Tuple[str, str], dict] = {}
+    by_name: Dict[str, List[dict]] = {}
+    count = 0
+
+    for team_raw, players in teams.items():
+        team = normalize_team_code(team_raw)
+        for row in players if isinstance(players, list) else []:
+            if not isinstance(row, dict):
+                continue
+            player = str(row.get("player", "")).strip()
+            if not player:
+                continue
+            status = str(row.get("status", "")).strip()
+            detail = str(row.get("detail", "")).strip()
+            merged_text = f"{status} {detail}".strip()
+            category = classify_injury_status(merged_text)
+            player_key = _clean_player_name(player)
+            entry = {
+                "player": player,
+                "team": team,
+                "status": status,
+                "detail": detail,
+                "category": category,
+            }
+            records[(team, player_key)] = entry
+            by_name.setdefault(player_key, []).append(entry)
+            count += 1
+
+    return {"records": records, "name_records": by_name, "source": str(path), "count": count}
+
+
+def apply_injury_overlays(
+    df: pd.DataFrame,
+    injury_index: dict,
+    questionable_penalty: float = 1.75,
+) -> Tuple[pd.DataFrame, dict]:
+    if df.empty:
+        return df, {"rows_total": 0, "rows_removed_hard_out": 0, "questionable_soft_penalized": 0, "source_mix": {}}
+
+    work = df.copy()
+    work["Team"] = work["Team"].map(normalize_team_code)
+    work["CSV Status"] = work["Playing Status"].astype(str)
+    work["ESPN Status"] = ""
+    work["Merged Status"] = "available"
+    work["Status Source"] = "none"
+    work["InjuryPenalty"] = 0.0
+
+    records = injury_index.get("records", {})
+    name_records = injury_index.get("name_records", {})
+    source_mix: Dict[str, int] = {"none": 0, "csv_only": 0, "espn_only": 0, "both": 0}
+    questionable_count = 0
+    removed_count = 0
+
+    def find_espn_entry(team: str, player_key: str) -> Optional[dict]:
+        exact = records.get((team, player_key))
+        if exact:
+            return exact
+        candidates = name_records.get(player_key, [])
+        if len(candidates) == 1:
+            return candidates[0]
+        return None
+
+    for idx, row in work.iterrows():
+        player_key = _clean_player_name(row.get("Name", ""))
+        team = normalize_team_code(row.get("Team", ""))
+        csv_status = str(row.get("CSV Status", "")).strip()
+        csv_cat = classify_injury_status(csv_status)
+        espn = find_espn_entry(team, player_key)
+        espn_status = ""
+        espn_cat = "available"
+        if espn:
+            espn_status = str(espn.get("status") or espn.get("detail") or "").strip()
+            espn_cat = str(espn.get("category") or "available")
+
+        categories = {csv_cat, espn_cat}
+        if "out" in categories:
+            merged = "out"
+        elif "questionable" in categories:
+            merged = "questionable"
+        elif "probable" in categories:
+            merged = "probable"
+        else:
+            merged = "available"
+
+        if espn and csv_cat != "available":
+            source = "both"
+        elif espn:
+            source = "espn_only"
+        elif csv_cat != "available":
+            source = "csv_only"
+        else:
+            source = "none"
+        source_mix[source] = source_mix.get(source, 0) + 1
+
+        penalty = questionable_penalty if merged == "questionable" else 0.0
+        if merged == "questionable":
+            questionable_count += 1
+        if merged == "out":
+            removed_count += 1
+
+        work.at[idx, "ESPN Status"] = espn_status
+        work.at[idx, "Merged Status"] = merged
+        work.at[idx, "Status Source"] = source
+        work.at[idx, "InjuryPenalty"] = penalty
+
+    filtered = work[work["Merged Status"] != "out"].copy().reset_index(drop=True)
+    summary = {
+        "rows_total": int(len(work.index)),
+        "rows_removed_hard_out": int(removed_count),
+        "rows_after_filter": int(len(filtered.index)),
+        "questionable_soft_penalized": int(questionable_count),
+        "source_mix": source_mix,
+        "injury_feed_records": int(injury_index.get("count", 0)),
+        "injury_feed_path": injury_index.get("source", ""),
+    }
+    return filtered, summary
+
+
+def _candidate_schedule_paths(data_root: Path) -> List[Path]:
+    if not data_root.exists():
+        return []
+    return sorted(data_root.glob("nba/season=*/schedule.json"))
+
+
+def load_schedule_rows(data_root: Path) -> List[dict]:
+    rows: List[dict] = []
+    for path in _candidate_schedule_paths(data_root):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        games = payload.get("games", []) if isinstance(payload, dict) else []
+        for row in games if isinstance(games, list) else []:
+            if not isinstance(row, dict):
+                continue
+            rows.append(
+                {
+                    "game_id": str(row.get("game_id", "")),
+                    "game_date": str(row.get("game_date", "")),
+                    "home_team": normalize_team_code(row.get("home_team", "")),
+                    "away_team": normalize_team_code(row.get("away_team", "")),
+                    "status_num": int(row.get("status_num") or 0),
+                }
+            )
+    return [row for row in rows if row.get("game_id")]
+
+
+def build_today_opponent_map(schedule_rows: List[dict], run_date: str) -> Dict[str, str]:
+    opponents: Dict[str, str] = {}
+    for row in schedule_rows:
+        if row.get("game_date") != run_date:
+            continue
+        home = normalize_team_code(row.get("home_team", ""))
+        away = normalize_team_code(row.get("away_team", ""))
+        if home and away:
+            opponents[home] = away
+            opponents[away] = home
+    return opponents
+
+
+def _load_game_boxscore_rows(game_id: str, data_root: Path, cache: Dict[str, List[dict]]) -> List[dict]:
+    if game_id in cache:
+        return cache[game_id]
+
+    candidates = sorted(data_root.glob(f"nba/season=*/processed/player_boxscore_jsonl/{game_id}.jsonl"))
+    rows: List[dict] = []
+    for path in candidates:
+        try:
+            for line in path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                row = json.loads(line)
+                if isinstance(row, dict):
+                    rows.append(row)
+        except Exception:
+            continue
+    cache[game_id] = rows
+    return rows
+
+
+def _h2h_fp(row: dict) -> float:
+    points = _safe_float(row.get("points"), 0.0)
+    rebounds = _safe_float(row.get("rebounds"), 0.0)
+    assists = _safe_float(row.get("assists"), 0.0)
+    steals = _safe_float(row.get("steals"), 0.0)
+    turnovers = _safe_float(row.get("turnovers"), 0.0)
+    return (
+        points * POINTS_WEIGHT
+        + rebounds * REBOUNDS_WEIGHT
+        + assists * ASSISTS_WEIGHT
+        + steals * STEALS_WEIGHT
+        + turnovers * TURNOVERS_WEIGHT
+    )
+
+
+def apply_h2h_adjustments(
+    df: pd.DataFrame,
+    run_date: str,
+    data_root: Path,
+    weight: float = 0.25,
+    cap_abs: float = 8.0,
+    min_samples: int = 3,
+) -> Tuple[pd.DataFrame, dict]:
+    if df.empty:
+        return df, {"players_with_h2h": 0, "players_adjusted": 0, "opponents_found": 0}
+
+    work = df.copy()
+    work["Team"] = work["Team"].map(normalize_team_code)
+    work["Opponent"] = ""
+    work["H2HSamples"] = 0
+    work["H2HAvgFP"] = np.nan
+    work["H2HAdj"] = 0.0
+
+    schedule_rows = load_schedule_rows(data_root)
+    opponents = build_today_opponent_map(schedule_rows, run_date)
+    game_cache: Dict[str, List[dict]] = {}
+
+    adjusted = 0
+    with_h2h = 0
+
+    for idx, row in work.iterrows():
+        team = normalize_team_code(row.get("Team", ""))
+        opponent = opponents.get(team, "")
+        work.at[idx, "Opponent"] = opponent
+        if not team or not opponent:
+            continue
+
+        prior_games = [
+            g
+            for g in schedule_rows
+            if g.get("game_date", "") < run_date
+            and {g.get("home_team"), g.get("away_team")} == {team, opponent}
+            and int(g.get("status_num") or 0) >= 2
+        ]
+        prior_games.sort(key=lambda g: (g.get("game_date", ""), g.get("game_id", "")), reverse=True)
+        target_games = prior_games[:5]
+        if not target_games:
+            continue
+
+        player_key = _clean_player_name(row.get("Name", ""))
+        values: List[float] = []
+        for game in target_games:
+            box_rows = _load_game_boxscore_rows(game.get("game_id", ""), data_root, game_cache)
+            for box in box_rows:
+                if normalize_team_code(box.get("team", "")) != team:
+                    continue
+                if _clean_player_name(box.get("player_name", "")) != player_key:
+                    continue
+                values.append(_h2h_fp(box))
+                break
+
+        if not values:
+            continue
+
+        with_h2h += 1
+        avg_fp = float(np.mean(values))
+        raw_delta = avg_fp - float(row.get("Form", 0.0))
+        adj = 0.0
+        if len(values) >= min_samples:
+            adj = max(-cap_abs, min(cap_abs, raw_delta * weight))
+            if abs(adj) > 0:
+                adjusted += 1
+
+        work.at[idx, "H2HSamples"] = int(len(values))
+        work.at[idx, "H2HAvgFP"] = round(avg_fp, 4)
+        work.at[idx, "H2HAdj"] = round(float(adj), 4)
+
+    summary = {
+        "opponents_found": len(opponents),
+        "players_with_h2h": int(with_h2h),
+        "players_adjusted": int(adjusted),
+        "h2h_weight": float(weight),
+        "h2h_cap_abs": float(cap_abs),
+        "h2h_min_samples": int(min_samples),
+    }
+    return work, summary
+
+
 def _canonical_column_map(columns: Iterable[str]) -> Dict[str, str]:
     mapping: Dict[str, str] = {}
     for raw in columns:
@@ -311,10 +704,7 @@ def load_and_clean_daily_csv(daily_csv_path: str) -> pd.DataFrame:
     cleaned["Name"] = cleaned["Name"].astype(str).str.strip()
     cleaned["Position"] = cleaned["Position"].astype(str).str.upper().str.strip()
     cleaned["Playing Status"] = cleaned["Playing Status"].astype(str)
-
-    # Keep PROBABLE players; remove true risk statuses.
-    risk_mask = cleaned["Playing Status"].str.contains(r"OUT|QUESTIONABLE|DOUBTFUL|INACTIVE", case=False, na=False)
-    cleaned = cleaned[~risk_mask].copy()
+    cleaned["Team"] = cleaned["Team"].astype(str).map(normalize_team_code)
 
     return cleaned.reset_index(drop=True)
 
@@ -388,17 +778,33 @@ def build_mission_control_payload(
     salary_cap: int,
     risk_penalty: float,
     train_days: int,
+    run_date: str,
     smokies: Optional[List[dict]] = None,
 ) -> dict:
     generated_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
     status = "done" if result.success else "blocked"
-    today = datetime.now().strftime("%Y-%m-%d")
-    call_id = f"pete-dfs-{today}-{slot}"
+    call_id = f"pete-dfs-{run_date}-{slot}"
 
     lineup_rows = _to_builtin_rows(result.lineup)
     salary_used = float(result.total_salary or 0.0)
     projected_form = float(result.projected_form or 0.0)
     smokie_rows = smokies or []
+    selection_reasons: List[dict] = []
+    for row in lineup_rows:
+        selection_reasons.append(
+            {
+                "player": row.get("Name", ""),
+                "team": row.get("Team", ""),
+                "baseline_form": _safe_float(row.get("Form"), 0.0),
+                "h2h_adjustment": _safe_float(row.get("H2HAdj"), 0.0),
+                "injury_penalty": _safe_float(row.get("InjuryPenalty"), 0.0),
+                "final_projection": _safe_float(row.get("SelectedProjection"), _safe_float(row.get("Form"), 0.0)),
+                "h2h_samples": int(_safe_float(row.get("H2HSamples"), 0.0)),
+                "opponent": row.get("Opponent", ""),
+                "merged_status": row.get("Merged Status", "available"),
+                "status_source": row.get("Status Source", "none"),
+            }
+        )
 
     return {
         "schema_version": "1.0",
@@ -406,7 +812,7 @@ def build_mission_control_payload(
         "queue_item": {
             "call_id": call_id,
             "owner": "Pete",
-            "due_at": f"{today}T09:00:00",
+            "due_at": f"{run_date}T09:00:00",
             "status": status,
             "priority": "high",
             "blocker": None if result.success else result.reason,
@@ -432,11 +838,14 @@ def build_mission_control_payload(
             "projected_form": round(projected_form, 3),
             "lineup": lineup_rows,
             "smokies": smokie_rows,
+            "selection_reasons": selection_reasons,
         },
         "model_quality": {
             "backtest": result.backtest,
             "scrape": result.scrape,
         },
+        "injury_source_summary": result.injury_summary or {},
+        "h2h_summary": result.h2h_summary or {},
     }
 
 
@@ -479,7 +888,8 @@ def optimize_dfs_lineup(df: pd.DataFrame, variance_map: Dict[str, float], salary
         return {"success": False, "reason": "no candidates after cleaning", "lineup": pd.DataFrame()}
 
     risk = np.array([variance_map.get(_clean_player_name(name), 0.0) for name in df["Name"]], dtype=float)
-    objective = -(df["Form"].astype(float).to_numpy() - (risk_penalty * risk))
+    projection_col = "AdjForm" if "AdjForm" in df.columns else "Form"
+    objective = -(df[projection_col].astype(float).to_numpy() - (risk_penalty * risk))
 
     constraints = _lineup_constraints(df, salary_cap=salary_cap)
 
@@ -500,6 +910,7 @@ def optimize_dfs_lineup(df: pd.DataFrame, variance_map: Dict[str, float], salary
     picks = np.where(np.rint(result.x).astype(int) == 1)[0]
     lineup = df.iloc[picks].copy().reset_index(drop=True)
     lineup["RiskStd"] = lineup["Name"].map(lambda name: variance_map.get(_clean_player_name(name), 0.0))
+    lineup["SelectedProjection"] = lineup[projection_col].astype(float)
 
     return {
         "success": True,
@@ -559,10 +970,18 @@ def run_rolling_backtest(history_df: pd.DataFrame, train_days: int = 7) -> dict:
 
 def run_pete_dfs_engine(
     daily_csv_path: str,
+    run_date: str,
     lookback_days: int = 10,
     salary_cap: int = DEFAULT_SALARY_CAP,
     risk_penalty: float = 0.15,
     train_days: int = 7,
+    espn_injuries_json: str = "",
+    data_root: str = "",
+    refresh_injuries: bool = True,
+    h2h_weight: float = 0.25,
+    h2h_cap_abs: float = 8.0,
+    h2h_min_samples: int = 3,
+    questionable_penalty: float = 1.75,
 ) -> EngineResult:
     print(f"PETE DFS ENGINE: processing {daily_csv_path}")
     print(f"Collecting ESPN history over last {lookback_days} days...")
@@ -572,6 +991,31 @@ def run_pete_dfs_engine(
     backtest = run_rolling_backtest(history_df, train_days=train_days)
 
     df = load_and_clean_daily_csv(daily_csv_path)
+
+    injury_path = resolve_espn_injury_path(espn_injuries_json)
+    refresh_status = {"ok": False, "path": str(injury_path), "skipped": True}
+    if refresh_injuries:
+        refresh_status = refresh_espn_injuries(run_date, injury_path)
+        refresh_status["skipped"] = False
+    injury_index = load_espn_injury_index(injury_path)
+    df, injury_summary = apply_injury_overlays(df, injury_index, questionable_penalty=questionable_penalty)
+    injury_summary["refresh"] = refresh_status
+
+    root = Path(data_root) if data_root else (Path.cwd() / "projects" / "pete-dfs" / "data-lake")
+    df, h2h_summary = apply_h2h_adjustments(
+        df,
+        run_date=run_date,
+        data_root=root,
+        weight=h2h_weight,
+        cap_abs=h2h_cap_abs,
+        min_samples=max(1, h2h_min_samples),
+    )
+
+    if "H2HAdj" not in df.columns:
+        df["H2HAdj"] = 0.0
+    if "InjuryPenalty" not in df.columns:
+        df["InjuryPenalty"] = 0.0
+    df["AdjForm"] = df["Form"].astype(float) + df["H2HAdj"].astype(float) - df["InjuryPenalty"].astype(float)
     result = optimize_dfs_lineup(df, variance_map, salary_cap=salary_cap, risk_penalty=risk_penalty)
 
     if not result["success"]:
@@ -584,15 +1028,19 @@ def run_pete_dfs_engine(
             projected_form=0.0,
             backtest=backtest,
             scrape=scrape,
+            injury_summary=injury_summary,
+            h2h_summary=h2h_summary,
         )
 
     lineup_df = result["lineup"].sort_values(["Position", "Name"]).reset_index(drop=True)
     total_salary = float(lineup_df["Salary"].sum())
-    projected_form = float(lineup_df["Form"].sum())
+    projected_form = float(lineup_df["SelectedProjection"].sum() if "SelectedProjection" in lineup_df.columns else lineup_df["Form"].sum())
     smokies = _derive_smokies(df, lineup_df.to_dict(orient="records"))
 
     print("\n--- FINAL OPTIMIZED LINEUP ---")
-    print(lineup_df[["Position", "Name", "Team", "Salary", "Form", "RiskStd"]].to_string(index=False))
+    display_cols = ["Position", "Name", "Team", "Salary", "Form", "H2HAdj", "InjuryPenalty", "SelectedProjection", "RiskStd"]
+    display_cols = [col for col in display_cols if col in lineup_df.columns]
+    print(lineup_df[display_cols].to_string(index=False))
     print(f"\nTotal Salary: ${total_salary:,.0f} | Projected Form: {projected_form:.2f}")
     if smokies:
         print("Top Smokies:")
@@ -600,6 +1048,8 @@ def run_pete_dfs_engine(
             print(f"{idx}. {row['player']} ({row['position']}) salary=${row['salary']:.0f} delta=+{row['delta']:.2f}")
     print(f"Backtest: {backtest}")
     print(f"Scrape: {scrape}")
+    print(f"Injury Summary: {injury_summary}")
+    print(f"H2H Summary: {h2h_summary}")
 
     return EngineResult(
         success=True,
@@ -609,6 +1059,8 @@ def run_pete_dfs_engine(
         projected_form=projected_form,
         backtest=backtest,
         scrape=scrape,
+        injury_summary=injury_summary,
+        h2h_summary=h2h_summary,
     )
 
 
@@ -621,6 +1073,22 @@ def main() -> None:
     parser.add_argument("--salary-cap", type=int, default=DEFAULT_SALARY_CAP, help="Salary cap for optimizer")
     parser.add_argument("--risk-penalty", type=float, default=0.15, help="Penalty multiplier for high-variance players")
     parser.add_argument("--train-days", type=int, default=7, help="Rolling train window days for backtest")
+    parser.add_argument("--espn-injuries-json", default="", help="Path to ESPN injuries JSON (sync target and fallback)")
+    parser.add_argument(
+        "--refresh-espn-injuries",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Refresh ESPN injury feed before optimization (default: true)",
+    )
+    parser.add_argument(
+        "--data-root",
+        default=str(Path.cwd() / "projects" / "pete-dfs" / "data-lake"),
+        help="Local data-lake root for H2H lookups",
+    )
+    parser.add_argument("--h2h-weight", type=float, default=0.25, help="Weight for H2H adjustment blending")
+    parser.add_argument("--h2h-cap-abs", type=float, default=8.0, help="Absolute cap for H2H adjustment points")
+    parser.add_argument("--h2h-min-samples", type=int, default=3, help="Minimum H2H samples before applying adjustment")
+    parser.add_argument("--questionable-penalty", type=float, default=1.75, help="Projection penalty for questionable players")
     parser.add_argument(
         "--mission-control-json",
         default="",
@@ -630,10 +1098,18 @@ def main() -> None:
 
     result = run_pete_dfs_engine(
         args.daily_csv_path,
+        run_date=args.date,
         lookback_days=max(1, args.lookback_days),
         salary_cap=max(1000, args.salary_cap),
         risk_penalty=max(0.0, args.risk_penalty),
         train_days=max(1, args.train_days),
+        espn_injuries_json=args.espn_injuries_json,
+        data_root=args.data_root,
+        refresh_injuries=bool(args.refresh_espn_injuries),
+        h2h_weight=max(0.0, args.h2h_weight),
+        h2h_cap_abs=max(0.0, args.h2h_cap_abs),
+        h2h_min_samples=max(1, args.h2h_min_samples),
+        questionable_penalty=max(0.0, args.questionable_penalty),
     )
 
     lineup_rows = result.lineup if result.success else []
@@ -653,6 +1129,7 @@ def main() -> None:
         salary_cap=max(1000, args.salary_cap),
         risk_penalty=max(0.0, args.risk_penalty),
         train_days=max(1, args.train_days),
+        run_date=args.date,
         smokies=smokies,
     )
 

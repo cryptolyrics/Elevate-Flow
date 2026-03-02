@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import pathlib
 import sys
 import tempfile
@@ -159,7 +160,13 @@ class PeteDFSEngineTests(unittest.TestCase):
             path = handle.name
 
         with mock.patch.object(self.module, "collect_espn_history_logs", return_value=(history, {"records": 8})):
-            result = self.module.run_pete_dfs_engine(path, lookback_days=5, train_days=2)
+            result = self.module.run_pete_dfs_engine(
+                path,
+                run_date="2026-03-03",
+                lookback_days=5,
+                train_days=2,
+                refresh_injuries=False,
+            )
 
         self.assertTrue(result.success)
         self.assertEqual(len(result.lineup), 9)
@@ -186,6 +193,7 @@ class PeteDFSEngineTests(unittest.TestCase):
             salary_cap=100000,
             risk_penalty=0.15,
             train_days=7,
+            run_date="2026-03-03",
             smokies=[{"player": "PG A", "delta": 3.2}],
         )
 
@@ -194,6 +202,82 @@ class PeteDFSEngineTests(unittest.TestCase):
         self.assertEqual(payload["dfs_lineup"]["selected_count"], 2)
         self.assertEqual(payload["dfs_lineup"]["salary_used"], 19700.0)
         self.assertEqual(len(payload["dfs_lineup"]["smokies"]), 1)
+        self.assertIn("injury_source_summary", payload)
+        self.assertIn("h2h_summary", payload)
+        self.assertEqual(payload["queue_item"]["call_id"], "pete-dfs-2026-03-03-early")
+
+    def test_apply_injury_overlays_prefers_espn_out_and_soft_penalizes_questionable(self):
+        candidates = self.pd.DataFrame(
+            [
+                {"Name": "Player Out", "Position": "PG", "Salary": 9000, "Form": 30, "Playing Status": "Probable", "Team": "LAL"},
+                {"Name": "Player Q", "Position": "SG", "Salary": 8800, "Form": 28, "Playing Status": "Questionable", "Team": "LAL"},
+                {"Name": "Player Ok", "Position": "SF", "Salary": 8500, "Form": 27, "Playing Status": "", "Team": "LAL"},
+            ]
+        )
+        injury_index = {
+            "records": {
+                ("LAL", "player out"): {"status": "Out", "detail": "ankle", "category": "out"},
+                ("LAL", "player q"): {"status": "Questionable", "detail": "illness", "category": "questionable"},
+            },
+            "name_records": {},
+            "count": 2,
+            "source": "/tmp/latest.json",
+        }
+        out, summary = self.module.apply_injury_overlays(candidates, injury_index, questionable_penalty=1.25)
+
+        self.assertEqual(summary["rows_removed_hard_out"], 1)
+        self.assertEqual(summary["questionable_soft_penalized"], 1)
+        self.assertEqual(len(out.index), 2)
+        q_row = out[out["Name"] == "Player Q"].iloc[0]
+        self.assertEqual(q_row["Merged Status"], "questionable")
+        self.assertAlmostEqual(float(q_row["InjuryPenalty"]), 1.25, places=3)
+
+    def test_apply_h2h_adjustments_blends_and_caps(self):
+        candidates = self.pd.DataFrame(
+            [
+                {"Name": "Test Player", "Position": "PG", "Salary": 9000, "Form": 20.0, "Playing Status": "", "Team": "LAL"},
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            season_dir = root / "nba" / "season=2025-26"
+            processed = season_dir / "processed" / "player_boxscore_jsonl"
+            processed.mkdir(parents=True, exist_ok=True)
+
+            schedule = {
+                "games": [
+                    {"game_id": "g_today", "game_date": "2026-03-03", "home_team": "LAL", "away_team": "DEN", "status_num": 1},
+                    {"game_id": "g1", "game_date": "2026-02-25", "home_team": "LAL", "away_team": "DEN", "status_num": 3},
+                    {"game_id": "g2", "game_date": "2026-02-20", "home_team": "DEN", "away_team": "LAL", "status_num": 3},
+                    {"game_id": "g3", "game_date": "2026-02-15", "home_team": "LAL", "away_team": "DEN", "status_num": 3},
+                ]
+            }
+            (season_dir / "schedule.json").write_text(json.dumps(schedule), encoding="utf-8")
+
+            game_rows = [
+                {"game_id": "g1", "game_date": "2026-02-25", "team": "LAL", "player_name": "Test Player", "points": 25, "rebounds": 6, "assists": 4, "steals": 2, "turnovers": 2},
+                {"game_id": "g2", "game_date": "2026-02-20", "team": "LAL", "player_name": "Test Player", "points": 22, "rebounds": 5, "assists": 5, "steals": 1, "turnovers": 1},
+                {"game_id": "g3", "game_date": "2026-02-15", "team": "LAL", "player_name": "Test Player", "points": 24, "rebounds": 7, "assists": 3, "steals": 1, "turnovers": 2},
+            ]
+            for gid in ["g1", "g2", "g3"]:
+                rows = [row for row in game_rows if row["game_id"] == gid]
+                text = "\n".join(json.dumps(row) for row in rows)
+                (processed / f"{gid}.jsonl").write_text(text + "\n", encoding="utf-8")
+
+            out, summary = self.module.apply_h2h_adjustments(
+                candidates,
+                run_date="2026-03-03",
+                data_root=root,
+                weight=0.5,
+                cap_abs=4.0,
+                min_samples=3,
+            )
+            self.assertEqual(summary["players_with_h2h"], 1)
+            self.assertEqual(summary["players_adjusted"], 1)
+            row = out.iloc[0]
+            self.assertEqual(row["Opponent"], "DEN")
+            self.assertEqual(int(row["H2HSamples"]), 3)
+            self.assertLessEqual(abs(float(row["H2HAdj"])), 4.0)
 
     def test_write_mission_control_payload_creates_json_file(self):
         payload = {"module": "pete_dfs", "queue_item": {"status": "done"}}

@@ -23,8 +23,11 @@ This framework codifies inputs, constraints, and learning updates so quality imp
   - ranked by projection delta + value score
 
 ## Current Model Behavior
-- Filters out ineligible statuses (`OUT`, `QUESTIONABLE`).
+- Merges CSV + ESPN injury statuses.
+- Hard excludes `OUT`, `DOUBTFUL`, `INACTIVE`.
+- Keeps `QUESTIONABLE` but applies projection penalty.
 - Projects player output from weighted form/FPPG + learned player adjustment.
+- Applies capped opponent-specific H2H adjustment from last 5 meetings (when sample quality is sufficient).
 - Optimizes lineup using constrained slot-based search.
 - Emits smokies in report and pivot notes.
 
@@ -139,6 +142,12 @@ python3 PeteDFS_engine.py \
   /path/to/draftstars.csv \
   --lookback-days 10 \
   --slot early \
+  --refresh-espn-injuries \
+  --espn-injuries-json projects/pete-dfs/data-lake/nba/injuries/latest.json \
+  --data-root projects/pete-dfs/data-lake \
+  --h2h-weight 0.25 \
+  --h2h-cap-abs 8 \
+  --h2h-min-samples 3 \
   --mission-control-json .pete-workspace/logs/Pete/2026-03-02-pete-dfs.json
 ```
 
