@@ -68,11 +68,12 @@ export class OpenClawCliProvider implements FetchProvider {
   async listRunsAfter(jobId: string, lastRunId?: string): Promise<RunRecord[]> {
     assertJobId(jobId);
 
-    const output = await runCliWithFallback(
-      this.openClawBin,
-      ["cron", "runs", "list", "--job", jobId, "--json"],
-      ["cron", "runs", "list", "--id", jobId, "--json"],
-    );
+    const output = await runCli(this.openClawBin, [
+      "cron",
+      "runs",
+      "--id",
+      jobId,
+    ]);
 
     const parsed = JSON.parse(output);
     const runsArray = Array.isArray(parsed) ? parsed : (parsed.runs || []);
