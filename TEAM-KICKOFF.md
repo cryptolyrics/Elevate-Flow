@@ -65,6 +65,10 @@ Align all agents to the new registry-driven framework and deterministic operatio
    - `curl -H "X-MC-KEY: <key>" http://127.0.0.1:3008/v1/status`
 3. Verify no unexpected `.clerk/dead-letter/*` growth
 4. Confirm JJ posted daily reports in `reports/daily/`
+5. Run token hygiene checks:
+   - `npm run sessions:prune:dry`
+   - `npm run sessions:prune` if stale sessions are listed
+6. Keep Telegram updates digest-first (no long transcript dumps)
 
 ## Day-1 Success Criteria
 

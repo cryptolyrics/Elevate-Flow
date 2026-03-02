@@ -5,7 +5,9 @@
   "private": true,
   "scripts": {
     "generate:openclaw": "node scripts/generate-openclaw.mjs",
-    "validate:registry": "node scripts/validate-registry.mjs"
+    "validate:registry": "node scripts/validate-registry.mjs",
+    "sessions:prune:dry": "node scripts/prune-openclaw-sessions.mjs",
+    "sessions:prune": "node scripts/prune-openclaw-sessions.mjs --apply"
   },
   "dependencies": {
     "yaml": "^2.8.1"

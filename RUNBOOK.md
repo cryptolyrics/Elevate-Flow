@@ -91,6 +91,10 @@ Daily checks:
    - `STATUS.md`
    - `logs/YYYY-MM-DD.jsonl`
    - `OUTPUTS/*`
+6. OpenClaw session store is pruned:
+   - `npm run sessions:prune:dry`
+   - `npm run sessions:prune` (when stale sessions are present)
+7. Telegram reporting stays compact (no transcript replay, digest-first updates).
 
 ## 8. Onboard a New Agent
 
@@ -129,3 +133,11 @@ JJ daily reporting and review handoff are defined in:
 - `docs/canon/HANDOFF-CONTRACT.md`
 - `reports/daily/README.md`
 - `reports/daily/templates/`
+
+## 12. Token Efficiency Controls
+
+- SOP: `sops/token-efficiency.md`
+- OpenClaw session pruner script: `scripts/prune-openclaw-sessions.mjs`
+- npm helpers:
+  - `npm run sessions:prune:dry`
+  - `npm run sessions:prune`
