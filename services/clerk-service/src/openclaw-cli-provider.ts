@@ -109,6 +109,9 @@ function parseRunsArray(output: string): any[] {
     if (Array.isArray(parsed?.data)) {
       return parsed.data;
     }
+    if (Array.isArray(parsed?.entries)) {
+      return parsed.entries;
+    }
   } catch {
     // Fallback for line-delimited JSON outputs.
   }
