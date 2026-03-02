@@ -16,6 +16,9 @@ This report covers UX patterns for mission control dashboards and command center
 - Slide-out panels for actions
 - Command palette (Cmd+K) for power users
 
+**Baseline decision:** Use the Cavallo-style operations pattern as primary reference for Mission Control implementation.  
+See: `docs/mission-control-cavallo-baseline.md`
+
 ---
 
 ## 5 Real Examples
