@@ -198,6 +198,22 @@ class PetePipelineTests(unittest.TestCase):
             self.assertEqual(first["away_code"], "BOS")
             self.assertEqual(games["source_lag_days"], 1)
 
+    def test_infer_slate_date_prefers_tank01_snapshot_path(self):
+        inferred = self.module.infer_slate_date(
+            "2026-03-03",
+            {"tank01_odds_source": "/tmp/snapshots/2026-03-02.json"},
+            {"games": []},
+        )
+        self.assertEqual(inferred, "2026-03-02")
+
+    def test_infer_slate_date_uses_odds_start_when_path_missing(self):
+        inferred = self.module.infer_slate_date(
+            "2026-03-03",
+            {"tank01_odds_source": ""},
+            {"games": [{"start": "20260302"}]},
+        )
+        self.assertEqual(inferred, "2026-03-02")
+
     def test_resolve_market_feeds_prefers_tank01(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = pathlib.Path(tmpdir)

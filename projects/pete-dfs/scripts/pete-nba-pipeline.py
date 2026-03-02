@@ -296,6 +296,41 @@ def _compact_to_dash_date(value: str) -> str:
     return text
 
 
+def _parse_dash_date(value: str) -> Optional[datetime]:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.strptime(text, "%Y-%m-%d")
+    except Exception:
+        return None
+
+
+def infer_slate_date(run_date: str, source_summary: dict, odds_data: dict) -> str:
+    # Prefer dated Tank01 snapshot path when available.
+    snapshot_path = str(source_summary.get("tank01_odds_source", "")).strip()
+    if snapshot_path:
+        try:
+            stem = Path(snapshot_path).stem
+            parsed = _parse_dash_date(stem)
+            if parsed is not None:
+                return parsed.strftime("%Y-%m-%d")
+        except Exception:
+            pass
+
+    # Fallback to first game start field when date-formatted.
+    for game in odds_data.get("games", []):
+        if not isinstance(game, dict):
+            continue
+        start_raw = str(game.get("start", "")).strip()
+        start_dash = _compact_to_dash_date(start_raw)
+        parsed = _parse_dash_date(start_dash)
+        if parsed is not None:
+            return parsed.strftime("%Y-%m-%d")
+
+    return str(run_date)
+
+
 def american_to_decimal(value: str) -> float:
     text = str(value or "").strip()
     if not text:
@@ -1907,6 +1942,7 @@ def generate_report(
     major_out_count: int,
     learning_summary: dict,
     data_source_summary: Optional[dict] = None,
+    b2b_reference_date: str = "",
 ) -> str:
     source_summary = data_source_summary or {}
     market_primary = source_summary.get("primary", "unknown")
@@ -2006,6 +2042,7 @@ Season: {season}
 
     report += f"""
 ## Risk Filters
+- B2B reference date: {b2b_reference_date or 'N/A'}
 - B2B blocked teams tracked: {b2b_count}
 - Major-out teams blocked: {major_out_count}
 - Rule: Home teams get +{safe_float(load_quant_rules().get('home_team_model_boost_pct', 0.10), 0.10) * 100:.0f}% model boost
@@ -2100,7 +2137,8 @@ def main() -> None:
         "fallback_components": source_summary.get("fallback_components", []),
     }
 
-    previous_date = (datetime.strptime(args.date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+    slate_date = infer_slate_date(args.date, source_summary, odds_for_wagering)
+    previous_date = (datetime.strptime(slate_date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
     if args.tank01_enable:
         b2b_teams = load_tank01_teams_played_on_date(
             previous_date,
@@ -2187,6 +2225,7 @@ def main() -> None:
         major_out_count=len(major_out_teams),
         learning_summary=learning_summary,
         data_source_summary=source_summary,
+        b2b_reference_date=previous_date,
     )
 
     report += (
