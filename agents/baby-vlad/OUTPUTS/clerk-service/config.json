@@ -1,0 +1,13 @@
+{
+  "workspaceRoot": "/Users/jjbot/.openclaw/workspace-jj",
+  "pollIntervalSec": 120,
+  "fetchMode": "cli",
+  "reportWorkspace": "/Users/jjbot/.openclaw/workspace-jj",
+  "jobs": [
+    {
+      "agentId": "baby-vlad",
+      "jobId": "bv-001",
+      "workspace": "workspace-baby-vlad"
+    }
+  ]
+}
