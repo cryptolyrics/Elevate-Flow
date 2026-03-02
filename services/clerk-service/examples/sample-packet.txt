@@ -1,0 +1,29 @@
+===AGENT_ID===
+pete
+====
+
+===STATUS_MD===
+# Pete Status
+Completed morning DFS pass.
+====
+
+===LOG_JSONL===
+{"level":"info","msg":"fetch complete"}
+{"level":"info","msg":"optimizer complete"}
+====
+
+===ARTIFACTS===
+[{"path":"lineups/lineup.json","content":"{\"ok\":true}"}]
+====
+
+===PACKET_VERSION===
+1.0
+====
+
+===RUN_ID===
+run-20260302-001
+====
+
+===GENERATED_AT===
+2026-03-02T08:30:00Z
+====

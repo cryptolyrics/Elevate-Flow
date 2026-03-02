@@ -1,13 +1,13 @@
 {
   "name": "elevate-flow",
   "version": "1.0.0",
-  "description": "Elevate Flow AI Agency Framework",
+  "description": "Elevate Flow framework and operations repo",
+  "private": true,
   "scripts": {
-    "test": "jest",
-    "health": "curl localhost:3008/health",
-    "status": "curl -H 'X-MC-KEY: $MC_KEY' localhost:3008/v1/status"
+    "generate:openclaw": "node scripts/generate-openclaw.mjs",
+    "validate:registry": "node scripts/validate-registry.mjs"
   },
-  "devDependencies": {
-    "jest": "^29.0.0"
+  "dependencies": {
+    "yaml": "^2.8.1"
   }
 }

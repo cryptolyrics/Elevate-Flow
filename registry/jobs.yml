@@ -1,0 +1,61 @@
+version: 1
+jobs:
+  - job_id: scout-morning-scan
+    agent_id: scout
+    workspace: agents/Jax
+    schedule:
+      cron: "0 8 * * *"
+      timezone: Australia/Brisbane
+    runtime:
+      target: isolated
+      provider: minimax
+      model: MiniMax-M2.5
+    enabled: true
+
+  - job_id: pete-dfs-morning
+    agent_id: pete
+    workspace: agents/Pete
+    schedule:
+      cron: "0 9 * * *"
+      timezone: Australia/Brisbane
+    runtime:
+      target: isolated
+      provider: openai
+      model: gpt-5-mini
+    enabled: true
+
+  - job_id: jj-daily-digest
+    agent_id: jj
+    workspace: agents/JJ
+    schedule:
+      cron: "30 17 * * *"
+      timezone: Australia/Brisbane
+    runtime:
+      target: main
+      provider: minimax
+      model: MiniMax-M2.5
+    enabled: true
+
+  - job_id: jj-health-alarm
+    agent_id: jj
+    workspace: agents/JJ
+    schedule:
+      cron: "0 18 * * *"
+      timezone: Australia/Brisbane
+    runtime:
+      target: isolated
+      provider: minimax
+      model: MiniMax-M2.5
+    enabled: true
+
+  - job_id: baby-vlad-small-coding
+    agent_id: baby-vlad
+    workspace: agents/baby-vlad
+    schedule:
+      cron: "15 10,14,19 * * *"
+      timezone: Australia/Brisbane
+    runtime:
+      target: isolated
+      provider: minimax
+      model: MiniMax-M2.5
+    enabled: false

@@ -1,147 +1,98 @@
-/**
- * Ordered Processing Tests
- * Tests that multiple runs are processed oldest -> newest
- */
+import fs from "fs";
+import os from "os";
+import path from "path";
+import { ClerkConfig } from "../src/config";
+import { Poller } from "../src/poller";
+import { FetchProvider, RunRecord } from "../src/provider";
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import { parsePacket } from '../src/parse/packet';
+function packet(status: string, runId: string): string {
+  return `===AGENT_ID===
+baby-vlad
+====
 
-// Mock run data
-interface MockRun {
-  runId: string;
-  jobId: string;
-  agentId: string;
-  status: 'completed' | 'failed' | 'running';
-  startedAt: string;
-  output: string;
+===STATUS_MD===
+${status}
+====
+
+===LOG_JSONL===
+{"run":"${runId}"}
+====
+
+===ARTIFACTS===
+[]
+====
+
+===RUN_ID===
+${runId}
+====`;
 }
 
-describe('ordered processing of multiple runs', () => {
-  test('parses runs in oldest -> newest order', () => {
-    const runs: MockRun[] = [
-      {
-        runId: 'run-001',
-        jobId: 'job-1',
-        agentId: 'baby-vlad',
-        status: 'completed',
-        startedAt: '2026-02-27T08:00:00Z',
-        output: `===AGENT_ID===
-baby-vlad
-====
+class FakeProvider implements FetchProvider {
+  constructor(private readonly runs: RunRecord[], private readonly outputs: Record<string, string>) {}
 
-===STATUS_MD===
-First run
-====
+  async listRunsAfter(_jobId: string): Promise<RunRecord[]> {
+    return this.runs;
+  }
 
-===LOG_JSONL===
-{"run":"1"}
-====
+  async getRunOutput(runId: string): Promise<string> {
+    return this.outputs[runId];
+  }
+}
 
-===ARTIFACTS===
-[]
-====`
-      },
-      {
-        runId: 'run-002',
-        jobId: 'job-1',
-        agentId: 'baby-vlad',
-        status: 'completed',
-        startedAt: '2026-02-27T09:00:00Z',
-        output: `===AGENT_ID===
-baby-vlad
-====
+describe("poller ordering and idempotency", () => {
+  const root = path.join(os.tmpdir(), `clerk-order-${Date.now()}`);
 
-===STATUS_MD===
-Second run
-====
+  beforeAll(() => {
+    fs.mkdirSync(root, { recursive: true });
+  });
 
-===LOG_JSONL===
-{"run":"2"}
-====
+  afterAll(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
 
-===ARTIFACTS===
-[]
-====`
-      },
-      {
-        runId: 'run-003',
-        jobId: 'job-1',
-        agentId: 'baby-vlad',
-        status: 'completed',
-        startedAt: '2026-02-27T10:00:00Z',
-        output: `===AGENT_ID===
-baby-vlad
-====
+  test("processes runs oldest to newest", async () => {
+    const config: ClerkConfig = {
+      workspaceRoot: root,
+      reportWorkspace: root,
+      pollIntervalSec: 60,
+      fetchMode: "cli",
+      openClawBin: "openclaw",
+      host: "127.0.0.1",
+      port: 3008,
+      jobs: [
+        {
+          jobId: "job-1",
+          agentId: "baby-vlad",
+          workspace: "workspace-baby-vlad",
+        },
+      ],
+    };
 
-===STATUS_MD===
-Third run
-====
-
-===LOG_JSONL===
-{"run":"3"}
-====
-
-===ARTIFACTS===
-[]
-====`
-      }
+    const runs: RunRecord[] = [
+      { runId: "run-3", jobId: "job-1", status: "completed", startedAt: "2026-03-01T10:02:00Z" },
+      { runId: "run-1", jobId: "job-1", status: "completed", startedAt: "2026-03-01T10:00:00Z" },
+      { runId: "run-2", jobId: "job-1", status: "completed", startedAt: "2026-03-01T10:01:00Z" },
     ];
 
-    // Sort runs oldest -> newest (by startedAt)
-    const sorted = [...runs].sort(
-      (a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()
-    );
+    const provider = new FakeProvider(runs, {
+      "run-1": packet("First", "run-1"),
+      "run-2": packet("Second", "run-2"),
+      "run-3": packet("Third", "run-3"),
+    });
 
-    // Process each and verify order
-    const processed: string[] = [];
-    for (const run of sorted) {
-      const packet = parsePacket(run.output);
-      processed.push(packet.statusMd.trim());
-    }
+    const poller = new Poller(config, provider);
+    await poller.pollOnce();
 
-    expect(processed).toEqual([
-      'First run',
-      'Second run', 
-      'Third run'
+    const statusPath = path.join(root, "workspace-baby-vlad", "STATUS.md");
+    const status = fs.readFileSync(statusPath, "utf8");
+    expect(status.trim()).toBe("Third");
+
+    const logPath = path.join(root, "workspace-baby-vlad", "logs", `${new Date().toISOString().slice(0, 10)}.jsonl`);
+    const lines = fs.readFileSync(logPath, "utf8").trim().split("\n");
+    expect(lines).toEqual([
+      '{"run":"run-1"}',
+      '{"run":"run-2"}',
+      '{"run":"run-3"}',
     ]);
-  });
-
-  test('handles unsorted input by sorting first', () => {
-    const runs = [
-      { startedAt: '2026-02-27T10:00:00Z', runId: 'run-C' },
-      { startedAt: '2026-02-27T08:00:00Z', runId: 'run-A' },
-      { startedAt: '2026-02-27T09:00:00Z', runId: 'run-B' }
-    ];
-
-    // Simulate how poller should sort
-    const sorted = [...runs].sort(
-      (a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()
-    );
-
-    expect(sorted.map(r => r.runId)).toEqual(['run-A', 'run-B', 'run-C']);
-  });
-
-  test('only processes runs after lastProcessedRunId', () => {
-    const lastProcessed = 'run-002';
-    const allRuns = [
-      { runId: 'run-001', startedAt: '2026-02-27T08:00:00Z' },
-      { runId: 'run-002', startedAt: '2026-02-27T09:00:00Z' },
-      { runId: 'run-003', startedAt: '2026-02-27T10:00:00Z' },
-      { runId: 'run-004', startedAt: '2026-02-27T11:00:00Z' }
-    ];
-
-    // Filter to runs after lastProcessed
-    const toProcess = allRuns.filter(
-      r => r.runId !== lastProcessed && 
-           allRuns.findIndex(a => a.runId === r.runId) > allRuns.findIndex(a => a.runId === lastProcessed)
-    );
-
-    // Actually, the filter should be: runs with higher index than lastProcessed
-    const lastIdx = allRuns.findIndex(r => r.runId === lastProcessed);
-    const pending = allRuns.slice(lastIdx + 1);
-
-    expect(pending.map(r => r.runId)).toEqual(['run-003', 'run-004']);
   });
 });

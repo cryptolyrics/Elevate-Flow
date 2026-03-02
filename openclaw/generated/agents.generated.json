@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "agents": [
+    {
+      "agentId": "jj",
+      "workspace": "agents/JJ",
+      "model": "MiniMax-M2.5",
+      "provider": "minimax"
+    },
+    {
+      "agentId": "vlad",
+      "workspace": "agents/Vlad",
+      "model": "gpt-5.1-codex",
+      "provider": "openai"
+    },
+    {
+      "agentId": "ali",
+      "workspace": "agents/Ali",
+      "model": "MiniMax-M2.5",
+      "provider": "minimax"
+    },
+    {
+      "agentId": "pete",
+      "workspace": "agents/Pete",
+      "model": "gpt-5-mini",
+      "provider": "openai"
+    },
+    {
+      "agentId": "coppa",
+      "workspace": "agents/Coppa",
+      "model": "gpt-5-mini",
+      "provider": "openai"
+    },
+    {
+      "agentId": "coach",
+      "workspace": "agents/Coach",
+      "model": "MiniMax-M2.5",
+      "provider": "minimax"
+    },
+    {
+      "agentId": "scout",
+      "workspace": "agents/Jax",
+      "model": "MiniMax-M2.5",
+      "provider": "minimax"
+    },
+    {
+      "agentId": "baby-vlad",
+      "workspace": "agents/baby-vlad",
+      "model": "MiniMax-M2.5",
+      "provider": "minimax"
+    }
+  ]
+}

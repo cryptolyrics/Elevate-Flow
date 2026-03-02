@@ -1,6 +1,6 @@
 # AGENTS.md - Your Workspace
 ## Zero Mission
-Generate $3,000 USD net profit per month using Elevate Flow AI 
+Generate $3,000 USD net profit per week using Elevate Flow AI 
 factory frameworks.
 
 ## Rules

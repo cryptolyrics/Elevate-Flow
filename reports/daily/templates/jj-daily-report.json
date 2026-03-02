@@ -1,0 +1,21 @@
+{
+  "date": "YYYY-MM-DD",
+  "timezone": "Australia/Brisbane",
+  "jobs_run": 0,
+  "jobs_failed": 0,
+  "dead_letters": 0,
+  "agents": [
+    { "agent_id": "jj", "status": "OK", "note": "" },
+    { "agent_id": "vlad", "status": "OK", "note": "" },
+    { "agent_id": "baby-vlad", "status": "OK", "note": "" },
+    { "agent_id": "ali", "status": "OK", "note": "" },
+    { "agent_id": "pete", "status": "OK", "note": "" },
+    { "agent_id": "coppa", "status": "OK", "note": "" },
+    { "agent_id": "coach", "status": "OK", "note": "" },
+    { "agent_id": "scout", "status": "OK", "note": "" }
+  ],
+  "blockers": [],
+  "decisions_needed": [],
+  "cost_notes": "",
+  "runtime_notes": ""
+}

@@ -1,127 +1,93 @@
-# Clerk Service
+# clerk-service
 
-Local Node/TS service for OpenClaw that polls run outputs, parses strict packet blocks, writes canonical files, and generates clerk reports.
+Deterministic normalization service for Elevate Flow.
 
-## Quick Start
+## Scope
+
+- Poll OpenClaw run outputs via CLI adapter.
+- Parse strict packet format.
+- Normalize output into canonical workspace files.
+- Track idempotent progress in `state.json`.
+- Dead-letter invalid runs.
+
+No LLM calls. No scheduling ownership. OpenClaw remains the orchestrator.
+
+## Endpoints
+
+- `GET /health` public
+- `GET /v1/status` requires `X-MC-KEY`
+- `GET /v1/jobs` requires `X-MC-KEY`
+
+Service binds to `127.0.0.1` only.
+
+## Config
+
+Default config path: `services/clerk-service/config.json`
+Override with: `CLERK_CONFIG=/path/to/config.json`
+
+Config fields:
+
+- `workspaceRoot`: sandbox root for canonical writes
+- `reportWorkspace`: root for `.clerk/report.md` and dead-letter
+- `pollIntervalSec`: polling interval in seconds (minimum 15)
+- `fetchMode`: `cli`
+- `openClawBin`: CLI binary name/path
+- `host`: must be `127.0.0.1`
+- `port`: HTTP port
+- `jobs[]`: `jobId`, `agentId`, `workspace`
+
+## Packet Contract
+
+Required blocks, in exact order:
+
+1. `AGENT_ID`
+2. `STATUS_MD`
+3. `LOG_JSONL`
+4. `ARTIFACTS`
+
+Optional trailing blocks:
+
+- `PACKET_VERSION`
+- `RUN_ID`
+- `GENERATED_AT`
+
+`ARTIFACTS` must be JSON array of `{ "path": string, "content": string }`.
+
+## Canonical Writes
+
+For each job workspace:
+
+- `STATUS.md` (atomic overwrite)
+- `logs/YYYY-MM-DD.jsonl` (append-only)
+- `OUTPUTS/**` (sandboxed artifact writes)
+
+Clerk internals:
+
+- `.clerk/state.json`
+- `.clerk/report.md`
+- `.clerk/dead-letter/YYYY-MM-DD/*.json`
+
+## Security
+
+- `X-MC-KEY` auth for protected endpoints (`MC_API_KEY` env var)
+- fail-closed if `MC_API_KEY` is missing
+- no `execSync`; CLI calls use `spawn(..., { shell: false })`
+- ID validation on `agentId`, `jobId`, `runId`
+- path traversal and absolute path rejection
+
+## Development
 
 ```bash
-# Install dependencies
-cd clerk-service
+cd services/clerk-service
 npm install
-
-# Build
 npm run build
-
-# Run (requires config.json - see below)
-npm start
-```
-
-## Configuration
-
-Create `config.json` in the service directory:
-
-```json
-{
-  "workspaceRoot": "/path/to/workspace-jj",
-  "pollIntervalSec": 120,
-  "fetchMode": "cli",
-  "reportWorkspace": "/path/to/workspace-jj",
-  "jobs": [
-    {
-      "agentId": "baby-vlad",
-      "jobId": "bv-001",
-      "workspace": "workspace-baby-vlad"
-    }
-  ]
-}
-```
-
-## Running
-
-```bash
-# Development mode
-npm run dev
-
-# Production
-npm start
-
-# With custom config path
-CLERK_CONFIG=/path/to/config.json npm start
-```
-
-## API Endpoints
-
-- `GET /health` - Health check (always returns `{"status":"ok"}`)
-- `GET /status` - Service status
-
-## Output Structure
-
-The service writes to the configured `workspaceRoot`:
-
-```
-outputs/
-├── clerk-state.json          # Last processed run per job
-├── clerk-report.md           # Latest poll report
-├── clerk-dead-letter/        # Failed runs
-│   └── YYYY-MM-DD/
-│       └── <jobId>-<runId>.json
-└── <jobId>/
-    ├── STATUS.md             # Latest status (overwritten)
-    ├── logs/
-    │   └── YYYY-MM-DD.jsonl # Appended logs
-    └── artifacts/
-        └── <files>           # Written artifacts
-```
-
-## Packet Format
-
-Run outputs must use strict block format:
-
-```
-===AGENT_ID===
-baby-vlad
-====
-
-===STATUS_MD===
-# Status content here
-====
-
-===LOG_JSONL===
-{"level":"info","msg":"hello"}
-{"level":"warn","msg":"caution"}
-====
-
-===ARTIFACTS===
-[{"filename":"output.json","content":"{}"}]
-====
-
-===PACKET_VERSION===
-1.0
-====
-
-===RUN_ID===
-run-123
-====
-
-===GENERATED_AT===
-2026-02-27T10:00:00Z
-====
-```
-
-Required blocks (in exact order): `AGENT_ID`, `STATUS_MD`, `LOG_JSONL`, `ARTIFACTS`
-
-Optional blocks: `PACKET_VERSION`, `RUN_ID`, `GENERATED_AT`
-
-## Testing
-
-```bash
 npm test
+MC_API_KEY=local-dev-key npm start
 ```
 
-## Design Principles
+## Testing Coverage
 
-- **No LLM calls** - Deterministic behavior only
-- **Minimal code** - Understandable in 5 minutes
-- **Idempotent** - Same input produces same output, state tracks progress
-- **Sandboxed** - All writes validated to stay within workspace root
-- **Strict parsing** - Rejects malformed packets
+- packet parser strictness
+- sandbox path protection
+- state idempotency behavior
+- ordered processing of runs

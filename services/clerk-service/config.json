@@ -1,13 +1,21 @@
 {
-  "workspaceRoot": "/Users/jjbot/.openclaw/workspace-jj",
+  "workspaceRoot": "../..",
+  "reportWorkspace": "../..",
   "pollIntervalSec": 120,
   "fetchMode": "cli",
-  "reportWorkspace": "/Users/jjbot/.openclaw/workspace-jj",
+  "openClawBin": "openclaw",
+  "host": "127.0.0.1",
+  "port": 3008,
   "jobs": [
     {
+      "jobId": "pete-dfs-morning",
+      "agentId": "pete",
+      "workspace": "agents/Pete"
+    },
+    {
+      "jobId": "baby-vlad-small-coding",
       "agentId": "baby-vlad",
-      "jobId": "bv-001",
-      "workspace": "workspace-baby-vlad"
+      "workspace": "agents/baby-vlad"
     }
   ]
 }

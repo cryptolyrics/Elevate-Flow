@@ -14,8 +14,8 @@ New pipeline script with full API-Sports integration:
 
 ### 2. API Configuration
 - Base URL: `https://v2.nba.api-sports.io`
-- Header: `x-apisports-key: 340340c7738e812f8dc3e2d639eef9c5`
-- Loaded from env var `NBA_API_KEY` (default provided)
+- Header: `x-apisports-key: <loaded from NBA_API_KEY>`
+- Loaded from environment variable `NBA_API_KEY`
 
 ### 3. Test Results
 ```

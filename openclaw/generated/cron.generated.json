@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "jobs": [
+    {
+      "jobId": "scout-morning-scan",
+      "agentId": "scout",
+      "cron": "0 8 * * *",
+      "timezone": "Australia/Brisbane",
+      "target": "isolated"
+    },
+    {
+      "jobId": "pete-dfs-morning",
+      "agentId": "pete",
+      "cron": "0 9 * * *",
+      "timezone": "Australia/Brisbane",
+      "target": "isolated"
+    },
+    {
+      "jobId": "jj-daily-digest",
+      "agentId": "jj",
+      "cron": "30 17 * * *",
+      "timezone": "Australia/Brisbane",
+      "target": "main"
+    },
+    {
+      "jobId": "jj-health-alarm",
+      "agentId": "jj",
+      "cron": "0 18 * * *",
+      "timezone": "Australia/Brisbane",
+      "target": "isolated"
+    }
+  ]
+}

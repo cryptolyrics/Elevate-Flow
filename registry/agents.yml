@@ -1,0 +1,57 @@
+version: 1
+agents:
+  - agent_id: jj
+    display_name: JJ
+    workspace: agents/JJ
+    default_model:
+      provider: minimax
+      model: MiniMax-M2.5
+
+  - agent_id: vlad
+    display_name: Vlad
+    workspace: agents/Vlad
+    default_model:
+      provider: openai
+      model: gpt-5.1-codex
+
+  - agent_id: ali
+    display_name: Ali
+    workspace: agents/Ali
+    default_model:
+      provider: minimax
+      model: MiniMax-M2.5
+
+  - agent_id: pete
+    display_name: Pete
+    workspace: agents/Pete
+    default_model:
+      provider: openai
+      model: gpt-5-mini
+
+  - agent_id: coppa
+    display_name: Coppa
+    workspace: agents/Coppa
+    default_model:
+      provider: openai
+      model: gpt-5-mini
+
+  - agent_id: coach
+    display_name: Coach
+    workspace: agents/Coach
+    default_model:
+      provider: minimax
+      model: MiniMax-M2.5
+
+  - agent_id: scout
+    display_name: Scout
+    workspace: agents/Jax
+    default_model:
+      provider: minimax
+      model: MiniMax-M2.5
+
+  - agent_id: baby-vlad
+    display_name: Baby Vlad
+    workspace: agents/baby-vlad
+    default_model:
+      provider: minimax
+      model: MiniMax-M2.5

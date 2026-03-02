@@ -1,50 +1,29 @@
-# Canonical v1 Architecture
+# Elevate Flow Canon - ARCHITECTURE
 
-## Overview
-This document defines the canonical structure for Elevate Flow agent services.
+## Top-Level Structure
 
-## Directory Structure
-
-```
+```text
 elevate-flow/
-├── docs/
-│   └── canon/          # Canonical specs
-│       ├── AGENTS.md   # Agent definitions
-│       ├── WORKFLOWS.md # Trigger definitions
-│       └── API.md      # API contract
-├── registry/           # Agent task registries
-├── services/
-│   └── clerk-service/ # Output verification service
-├── openclaw/          # OpenClaw config snapshots
-├── agents/            # Agent profiles
-├── workflows/         # Cron definitions
-└── RUNBOOK.md         # Operations manual
+  docs/canon/                # contracts, rules, flow, security
+  registry/                  # canonical agent + job registry
+  openclaw/templates/        # template notes
+  openclaw/generated/        # generated OpenClaw snapshots
+  services/clerk-service/    # packet normalization sidecar
+  agents/                    # existing agent identities/profiles
+  projects/                  # project workstreams (Pete optimization)
+  RUNBOOK.md                 # operator guide
 ```
 
-## Agent Contract
+## Plane Separation
 
-Each agent must:
-1. Read TASKS.md from workspace
-2. Execute tasks
-3. Write STATUS.md on completion
-4. Append to logs/YYYY-MM-DD.jsonl
+- OpenClaw: execution and scheduling plane.
+- Clerk: deterministic normalization plane.
+- Registry: control configuration plane.
+- Mission Control (future): visualization and operations UI plane.
 
-## API Contract
+## Data Flow
 
-### GET /v1/status
-Returns agent status.
-
-### GET /v1/logs?agent=&date=&tail=
-Returns log entries.
-
-### GET /v1/digest?date=
-Returns daily digest.
-
-### GET /v1/health-alarm?date=
-Returns health alarm report.
-
-## Workflow Triggers
-
-- Cron: Time-based execution
-- Heartbeat: Periodic check-ins
-- Webhook: External events
+1. OpenClaw cron runs an agent job.
+2. Agent emits packet output.
+3. Clerk validates packet and normalizes writes.
+4. Canonical workspace files drive digest/health/reporting.
