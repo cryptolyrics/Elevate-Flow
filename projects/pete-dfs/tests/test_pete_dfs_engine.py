@@ -315,6 +315,40 @@ class PeteDFSEngineTests(unittest.TestCase):
         self.assertGreater(float(adjusted.iloc[0]["Tank01PropAdj"]), 0)
         self.assertTrue(self.pd.isna(adjusted.iloc[1]["Tank01PropFP"]))
 
+    def test_tank01_loaders_fallback_to_prior_date(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            players_dir = root / "nba" / "players"
+            props_dir = root / "nba" / "betting-props"
+            players_dir.mkdir(parents=True, exist_ok=True)
+            props_dir.mkdir(parents=True, exist_ok=True)
+
+            players_payload = {
+                "body": [
+                    {"playerID": "123", "longName": "Test Player", "team": "LAL", "pos": "SG"},
+                ],
+                "statusCode": 200,
+            }
+            props_payload = {
+                "body": [
+                    {"gameID": "20260302_DEN@LAL", "playerProps": [{"playerID": "123", "propBets": {"pts": "20.5", "reb": "5.5", "ast": "4.5"}}]},
+                ],
+                "statusCode": 200,
+            }
+
+            (players_dir / "2026-03-02.json").write_text(json.dumps(players_payload), encoding="utf-8")
+            (props_dir / "2026-03-02.json").write_text(json.dumps(props_payload), encoding="utf-8")
+
+            players = self.module.load_tank01_players_index("2026-03-03", root, max_lag_days=2)
+            props = self.module.load_tank01_props_index("2026-03-03", root, max_lag_days=2)
+
+            self.assertEqual(players["source_lag_days"], 1)
+            self.assertTrue(players["fallback_used"])
+            self.assertEqual(players["mapped"], 1)
+            self.assertEqual(props["source_lag_days"], 1)
+            self.assertTrue(props["fallback_used"])
+            self.assertEqual(props["players_with_props"], 1)
+
     def test_write_mission_control_payload_creates_json_file(self):
         payload = {"module": "pete_dfs", "queue_item": {"status": "done"}}
         with tempfile.TemporaryDirectory() as tmpdir:

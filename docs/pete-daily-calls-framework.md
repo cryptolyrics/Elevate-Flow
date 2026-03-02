@@ -151,6 +151,7 @@ python3 PeteDFS_engine.py \
   --tank01-props-weight 0.2 \
   --tank01-props-cap-abs 8 \
   --tank01-backtest-days 21 \
+  --tank01-max-lag-days 2 \
   --h2h-weight 0.25 \
   --h2h-cap-abs 8 \
   --h2h-min-samples 3 \

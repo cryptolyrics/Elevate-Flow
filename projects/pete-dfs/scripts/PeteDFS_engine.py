@@ -9,7 +9,7 @@ import os
 import re
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -350,6 +350,41 @@ def _load_json_payload(path: Path) -> dict:
     return {}
 
 
+def _parse_date_from_stem(path: Path) -> Optional[date]:
+    try:
+        return datetime.strptime(path.stem, "%Y-%m-%d").date()
+    except Exception:
+        return None
+
+
+def _resolve_dated_file_with_lag(directory: Path, run_date: str, max_lag_days: int) -> Tuple[Path, int]:
+    run_dt = datetime.strptime(run_date, "%Y-%m-%d").date()
+    exact = directory / f"{run_date}.json"
+    if exact.exists():
+        return exact, 0
+
+    if not directory.exists():
+        return Path(""), -1
+
+    candidates: List[Tuple[int, Path]] = []
+    for path in directory.glob("*.json"):
+        parsed = _parse_date_from_stem(path)
+        if parsed is None:
+            continue
+        lag = (run_dt - parsed).days
+        if lag < 0:
+            continue
+        if lag <= max(0, max_lag_days):
+            candidates.append((lag, path))
+
+    if not candidates:
+        return Path(""), -1
+
+    candidates.sort(key=lambda row: (row[0], row[1].name))
+    lag, path = candidates[0]
+    return path, lag
+
+
 def _candidate_tank01_players_paths(run_date: str, data_root: Path) -> List[Path]:
     return [
         data_root / "nba" / "players" / f"{run_date}.json",
@@ -381,13 +416,18 @@ def _candidate_tank01_boxscore_paths(run_date: str, data_root: Path) -> List[Pat
     ]
 
 
-def load_tank01_players_index(run_date: str, data_root: Path) -> dict:
+def load_tank01_players_index(run_date: str, data_root: Path, max_lag_days: int = 2) -> dict:
     payload = {}
     source = ""
-    for path in _candidate_tank01_players_paths(run_date, data_root):
+    source_lag_days = -1
+    for base in [data_root / "nba" / "players", Path.cwd() / "projects" / "pete-dfs" / "data-lake" / "nba" / "players"]:
+        path, lag = _resolve_dated_file_with_lag(base, run_date, max_lag_days=max_lag_days)
+        if not path:
+            continue
         payload = _load_json_payload(path)
         if payload:
             source = str(path)
+            source_lag_days = lag
             break
     body = payload.get("body", []) if isinstance(payload, dict) else []
     rows = body if isinstance(body, list) else []
@@ -416,6 +456,8 @@ def load_tank01_players_index(run_date: str, data_root: Path) -> dict:
 
     return {
         "source": source,
+        "source_lag_days": int(source_lag_days),
+        "fallback_used": bool(source_lag_days > 0),
         "rows": len(rows),
         "mapped": len(by_name),
         "team_rows": team_count,
@@ -443,13 +485,18 @@ def _tank01_prop_to_fp(prop_bets: dict) -> float:
     )
 
 
-def load_tank01_props_index(run_date: str, data_root: Path) -> dict:
+def load_tank01_props_index(run_date: str, data_root: Path, max_lag_days: int = 2) -> dict:
     payload = {}
     source = ""
-    for path in _candidate_tank01_props_paths(run_date, data_root):
+    source_lag_days = -1
+    for base in [data_root / "nba" / "betting-props", Path.cwd() / "projects" / "pete-dfs" / "data-lake" / "nba" / "betting-props"]:
+        path, lag = _resolve_dated_file_with_lag(base, run_date, max_lag_days=max_lag_days)
+        if not path:
+            continue
         payload = _load_json_payload(path)
         if payload:
             source = str(path)
+            source_lag_days = lag
             break
 
     body = payload.get("body", []) if isinstance(payload, dict) else []
@@ -482,6 +529,8 @@ def load_tank01_props_index(run_date: str, data_root: Path) -> dict:
 
     return {
         "source": source,
+        "source_lag_days": int(source_lag_days),
+        "fallback_used": bool(source_lag_days > 0),
         "games": len(games),
         "player_rows": player_rows,
         "players_with_props": len(by_player_id),
@@ -489,13 +538,18 @@ def load_tank01_props_index(run_date: str, data_root: Path) -> dict:
     }
 
 
-def load_tank01_injury_index(run_date: str, data_root: Path) -> dict:
+def load_tank01_injury_index(run_date: str, data_root: Path, max_lag_days: int = 2) -> dict:
     payload = {}
     source = ""
-    for path in _candidate_tank01_injuries_paths(run_date, data_root):
+    source_lag_days = -1
+    for base in [data_root / "nba" / "injuries", Path.cwd() / "projects" / "pete-dfs" / "data-lake" / "nba" / "injuries"]:
+        path, lag = _resolve_dated_file_with_lag(base, run_date, max_lag_days=max_lag_days)
+        if not path:
+            continue
         payload = _load_json_payload(path)
         if payload:
             source = str(path)
+            source_lag_days = lag
             break
 
     body = payload.get("body", []) if isinstance(payload, dict) else []
@@ -519,7 +573,14 @@ def load_tank01_injury_index(run_date: str, data_root: Path) -> dict:
         records[key] = entry
         by_name.setdefault(_clean_player_name(player), []).append(entry)
 
-    return {"records": records, "name_records": by_name, "source": source, "count": len(records)}
+    return {
+        "records": records,
+        "name_records": by_name,
+        "source": source,
+        "source_lag_days": int(source_lag_days),
+        "fallback_used": bool(source_lag_days > 0),
+        "count": len(records),
+    }
 
 
 def merge_injury_indexes(primary: dict, secondary: dict) -> dict:
@@ -1411,6 +1472,7 @@ def run_pete_dfs_engine(
     tank01_props_weight: float = DEFAULT_TANK01_PROPS_WEIGHT,
     tank01_props_cap_abs: float = DEFAULT_TANK01_PROPS_CAP,
     tank01_backtest_days: int = 21,
+    tank01_max_lag_days: int = 2,
 ) -> EngineResult:
     print(f"PETE DFS ENGINE: processing {daily_csv_path}")
     print(f"Collecting ESPN history over last {lookback_days} days...")
@@ -1422,10 +1484,10 @@ def run_pete_dfs_engine(
     df = load_and_clean_daily_csv(daily_csv_path)
     root = Path(data_root) if data_root else (Path.cwd() / "projects" / "pete-dfs" / "data-lake")
 
-    tank01_players_index = load_tank01_players_index(run_date, root)
+    tank01_players_index = load_tank01_players_index(run_date, root, max_lag_days=max(0, tank01_max_lag_days))
     df, tank01_players_summary = apply_tank01_player_mapping(df, tank01_players_index)
 
-    tank01_props_index = load_tank01_props_index(run_date, root)
+    tank01_props_index = load_tank01_props_index(run_date, root, max_lag_days=max(0, tank01_max_lag_days))
     df, tank01_props_summary = apply_tank01_prop_projection_signal(
         df,
         tank01_props_index,
@@ -1433,7 +1495,7 @@ def run_pete_dfs_engine(
         cap_abs=max(0.0, tank01_props_cap_abs),
     )
 
-    tank01_injury_index = load_tank01_injury_index(run_date, root)
+    tank01_injury_index = load_tank01_injury_index(run_date, root, max_lag_days=max(0, tank01_max_lag_days))
     tank01_backtest = run_tank01_props_backtest(root, lookback_days=max(1, tank01_backtest_days))
     tank01_summary = {
         "players": tank01_players_summary,
@@ -1576,6 +1638,7 @@ def main() -> None:
     parser.add_argument("--tank01-props-weight", type=float, default=DEFAULT_TANK01_PROPS_WEIGHT, help="Tank01 props blend weight into projection")
     parser.add_argument("--tank01-props-cap-abs", type=float, default=DEFAULT_TANK01_PROPS_CAP, help="Absolute cap for Tank01 props adjustment points")
     parser.add_argument("--tank01-backtest-days", type=int, default=21, help="How many recent Tank01 prop dates to include in backtest summary")
+    parser.add_argument("--tank01-max-lag-days", type=int, default=2, help="Max file-date lag to accept for Tank01 dated snapshots")
     parser.add_argument(
         "--mission-control-json",
         default="",
@@ -1600,6 +1663,7 @@ def main() -> None:
         tank01_props_weight=max(0.0, args.tank01_props_weight),
         tank01_props_cap_abs=max(0.0, args.tank01_props_cap_abs),
         tank01_backtest_days=max(1, args.tank01_backtest_days),
+        tank01_max_lag_days=max(0, args.tank01_max_lag_days),
     )
 
     lineup_rows = result.lineup if result.success else []

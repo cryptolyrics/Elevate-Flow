@@ -37,6 +37,7 @@ DFS engine reliability features:
   - DFS optimization: name->ID mapping + props projection blend (`--tank01-props-*`)
   - Backtest summary: props vs boxscore files (`--tank01-backtest-days`)
   - Value detection: salary vs prop-implied FP edges in Mission Control payload
+  - Live date lag support: auto-fallback to latest prior dated file (`--tank01-max-lag-days`, default 2)
 
 ## Fixtures
 
