@@ -1,10 +1,11 @@
 # Pete Daily Calls Framework (NBA)
 
 ## Scope
-Pete runs two daily NBA calls:
+Pete runs three daily NBA calls:
 
 1. Draftstars DFS lineup + smokies
 2. Best Bet of the Day (head-to-head or handicap)
+3. Parlay of the Day (player props multi)
 
 This framework codifies inputs, constraints, and learning updates so quality improves over time.
 
@@ -42,7 +43,71 @@ This framework codifies inputs, constraints, and learning updates so quality imp
 - No bets on games where either team has major player outs (major-out filter).
 - Minimum edge gates must pass:
   - probability edge threshold
-  - expected return threshold (`edge_dollars_per_1u`)
+- expected return threshold (`edge_dollars_per_1u`)
+
+## Call 3: Parlay of the Day (Player Props)
+
+## Inputs
+- Player props payload (`--props-json`) covering full day slate.
+- Optional matchup history payload (`--h2h-json`) with last five meetings.
+- Optional Draftstars CSV projection map to reinforce player confidence.
+
+Example props payload:
+
+```json
+{
+  "games": [
+    {
+      "home": "Nuggets",
+      "away": "Lakers",
+      "props": [
+        {
+          "player": "J Murray",
+          "team": "Nuggets",
+          "opponent": "Lakers",
+          "market": "3PM",
+          "line": 2.5,
+          "odds_over": 1.95,
+          "odds_under": 1.85,
+          "last5_vs_opp": [4, 3, 3, 5, 4]
+        }
+      ]
+    }
+  ]
+}
+```
+
+Example optional `--h2h-json` payload:
+
+```json
+{
+  "matchups": [
+    {
+      "player": "J Murray",
+      "team": "Nuggets",
+      "opponent": "Lakers",
+      "market": "3PM",
+      "values": [4, 3, 3, 5, 4]
+    }
+  ]
+}
+```
+
+## Supported Prop Markets
+- `PTS`, `REB`, `AST`, `STL`, `3PM`
+
+## Required Logic
+- Cross-reference each prop with last five meetings for that matchup.
+- Keep only candidates with clear success/progression:
+  - matchup hit-rate and/or trend signal
+- Apply safety haircut: reduce projected call by at least 10%.
+  - Example: projected 3.0 threes -> safe call 2.
+- Build top multi from edge-qualified legs only.
+
+## Risk and Safety
+- Uses quant gates plus probability edge checks.
+- Rejects weak/noisy candidates.
+- Returns `NO_PROP_PARLAY` when edge criteria are not met.
 
 ## Learning Engine
 
@@ -85,6 +150,16 @@ python3 pete-nba-pipeline.py \
   --draftstars-csv /path/to/draftstars.csv \
   --feedback-json /path/to/pete-feedback.json \
   --major-outs-json /path/to/major_outs.json
+
+Run with player props and matchup history:
+
+```bash
+python3 pete-nba-pipeline.py \
+  --date 2026-03-02 \
+  --season 2026 \
+  --props-json /path/to/props.json \
+  --h2h-json /path/to/h2h-last5.json
+```
 ```
 
 ## Config Files

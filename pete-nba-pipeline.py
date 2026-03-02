@@ -19,6 +19,7 @@ Environment:
 import argparse
 import csv
 import json
+import math
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -246,6 +247,11 @@ def load_quant_rules() -> dict:
         "max_parlay_legs": 3,
         "smokie_percentile": 0.35,
         "smokie_min_projection_delta": 1.0,
+        "prop_call_haircut_pct": 0.10,
+        "prop_min_line_edge": 0.35,
+        "prop_min_model_edge_pct": 0.03,
+        "prop_max_legs": 3,
+        "prop_trend_weight": 0.35,
     }
 
     for candidate in _candidate_rules_paths():
@@ -300,7 +306,8 @@ def load_learning_state() -> dict:
     defaults = {
         "player_adjustments": {},
         "team_adjustments": {},
-        "meta": {"dfs_samples": 0, "bet_samples": 0, "updated_at": ""},
+        "player_prop_adjustments": {},
+        "meta": {"dfs_samples": 0, "bet_samples": 0, "prop_samples": 0, "updated_at": ""},
     }
 
     path = learning_state_path()
@@ -315,8 +322,10 @@ def load_learning_state() -> dict:
                 defaults["player_adjustments"] = {}
             if not isinstance(defaults.get("team_adjustments"), dict):
                 defaults["team_adjustments"] = {}
+            if not isinstance(defaults.get("player_prop_adjustments"), dict):
+                defaults["player_prop_adjustments"] = {}
             if not isinstance(defaults.get("meta"), dict):
-                defaults["meta"] = {"dfs_samples": 0, "bet_samples": 0, "updated_at": ""}
+                defaults["meta"] = {"dfs_samples": 0, "bet_samples": 0, "prop_samples": 0, "updated_at": ""}
     except Exception:
         return defaults
 
@@ -345,9 +354,11 @@ def update_learning_state_from_feedback(state: dict, feedback_path: Optional[str
 
     dfs_samples = payload.get("dfs", []) if isinstance(payload, dict) else []
     bet_samples = payload.get("bets", []) if isinstance(payload, dict) else []
+    prop_samples = payload.get("props", []) if isinstance(payload, dict) else []
 
     player_adj = state.setdefault("player_adjustments", {})
     team_adj = state.setdefault("team_adjustments", {})
+    prop_adj = state.setdefault("player_prop_adjustments", {})
     meta = state.setdefault("meta", {})
 
     learning_rate_dfs = 0.08
@@ -381,6 +392,23 @@ def update_learning_state_from_feedback(state: dict, feedback_path: Optional[str
         current = safe_float(team_adj.get(key, 0.0), 0.0)
         team_adj[key] = round(clamp(current + learning_rate_bet * calibration_error, -0.12, 0.12), 6)
         meta["bet_samples"] = int(meta.get("bet_samples", 0)) + 1
+
+    learning_rate_prop = 0.08
+    for sample in prop_samples if isinstance(prop_samples, list) else []:
+        if not isinstance(sample, dict):
+            continue
+        player = str(sample.get("player", "")).strip()
+        market = normalize_market(sample.get("market"))
+        projected = safe_float(sample.get("projected"), 0.0)
+        actual = safe_float(sample.get("actual"), 0.0)
+        if not player or not market:
+            continue
+
+        key = f"{player.lower()}::{market}"
+        error = actual - projected
+        current = safe_float(prop_adj.get(key, 0.0), 0.0)
+        prop_adj[key] = round(clamp(current + learning_rate_prop * error, -3.0, 3.0), 4)
+        meta["prop_samples"] = int(meta.get("prop_samples", 0)) + 1
 
     return state
 
@@ -566,6 +594,7 @@ def build_best_lineup(
             "total_salary": 0,
             "projected_points": 0,
             "smokies": [],
+            "projection_map": {},
             "note": "No Draftstars CSV supplied. Pass --draftstars-csv to build lineup.",
         }
 
@@ -580,6 +609,7 @@ def build_best_lineup(
             "total_salary": 0,
             "projected_points": 0,
             "smokies": [],
+            "projection_map": {},
             "note": "No eligible players after filtering.",
         }
 
@@ -593,6 +623,7 @@ def build_best_lineup(
             "total_salary": 0,
             "projected_points": 0,
             "smokies": smokies,
+            "projection_map": {p["name"].lower(): p["projected"] for p in players},
             "note": "Optimization failed to find a valid lineup under constraints.",
         }
 
@@ -616,6 +647,7 @@ def build_best_lineup(
         "total_salary": total_salary,
         "projected_points": round(projected_points, 3),
         "smokies": smokies,
+        "projection_map": {p["name"].lower(): p["projected"] for p in players},
         "note": f"Optimized from CSV using slot={slot}",
     }
 
@@ -866,12 +898,282 @@ def get_bet_pick(
     return best
 
 
+def normalize_market(value) -> str:
+    token = str(value or "").strip().lower().replace(" ", "")
+    aliases = {
+        "points": "PTS",
+        "pts": "PTS",
+        "rebounds": "REB",
+        "reb": "REB",
+        "assists": "AST",
+        "ast": "AST",
+        "steals": "STL",
+        "stl": "STL",
+        "threes": "3PM",
+        "3ptm": "3PM",
+        "3pm": "3PM",
+        "threepointersmade": "3PM",
+    }
+    return aliases.get(token, token.upper())
+
+
+def _prop_history_values(prop: dict, h2h_lookup: dict) -> List[float]:
+    direct = (
+        prop.get("last5_vs_opp")
+        or prop.get("last5_vs_opponent")
+        or prop.get("last_5")
+        or prop.get("history")
+        or []
+    )
+    values = [safe_float(v, math.nan) for v in direct if str(v).strip() != ""]
+    values = [v for v in values if not math.isnan(v)]
+    if values:
+        return values
+
+    player_key = str(prop.get("player", "")).strip().lower()
+    team_key = normalize_team_key(prop.get("team", ""))
+    opp_key = normalize_team_key(prop.get("opponent", ""))
+    market = normalize_market(prop.get("market"))
+    return h2h_lookup.get(f"{player_key}::{team_key}::{opp_key}::{market}", [])
+
+
+def load_h2h_lookup(path: str) -> dict:
+    if not path:
+        return {}
+    file_path = Path(path)
+    if not file_path.exists():
+        return {}
+    try:
+        payload = json.loads(file_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+    rows = payload.get("matchups", []) if isinstance(payload, dict) else []
+    if not isinstance(rows, list):
+        return {}
+
+    lookup = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        player = str(row.get("player", "")).strip().lower()
+        team = normalize_team_key(row.get("team", ""))
+        opp = normalize_team_key(row.get("opponent", ""))
+        market = normalize_market(row.get("market"))
+        values = [safe_float(v, math.nan) for v in row.get("values", []) if str(v).strip() != ""]
+        values = [v for v in values if not math.isnan(v)]
+        if not player or not team or not opp or not market or not values:
+            continue
+        lookup[f"{player}::{team}::{opp}::{market}"] = values
+    return lookup
+
+
+def load_prop_candidates(props_json_path: str, h2h_json_path: str = "") -> List[dict]:
+    if not props_json_path:
+        return []
+    props_path = Path(props_json_path)
+    if not props_path.exists():
+        return []
+
+    try:
+        payload = json.loads(props_path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+    games = payload.get("games", []) if isinstance(payload, dict) else []
+    if not isinstance(games, list):
+        return []
+
+    h2h_lookup = load_h2h_lookup(h2h_json_path)
+    candidates: List[dict] = []
+
+    for game in games:
+        if not isinstance(game, dict):
+            continue
+        home = str(game.get("home", "")).strip()
+        away = str(game.get("away", "")).strip()
+        props = game.get("props", [])
+        if not isinstance(props, list):
+            continue
+
+        for prop in props:
+            if not isinstance(prop, dict):
+                continue
+            player = str(prop.get("player", "")).strip()
+            team = str(prop.get("team", "")).strip()
+            if not player or not team:
+                continue
+
+            opponent = str(prop.get("opponent", "")).strip() or (away if normalize_team_key(team) == normalize_team_key(home) else home)
+            market = normalize_market(prop.get("market"))
+            if market not in {"PTS", "REB", "AST", "STL", "3PM"}:
+                continue
+
+            line = safe_float(prop.get("line"), math.nan)
+            if math.isnan(line):
+                continue
+
+            history = _prop_history_values({**prop, "opponent": opponent, "market": market}, h2h_lookup)
+            if len(history) < 5:
+                continue
+
+            candidates.append(
+                {
+                    "player": player,
+                    "team": team,
+                    "opponent": opponent,
+                    "market": market,
+                    "line": line,
+                    "odds_over": safe_float(prop.get("odds_over"), safe_float(prop.get("odds"), 1.87)),
+                    "odds_under": safe_float(prop.get("odds_under"), safe_float(prop.get("odds"), 1.87)),
+                    "last5": history[:5],
+                    "game": f"{away} @ {home}",
+                }
+            )
+    return candidates
+
+
+def _prop_projection(candidate: dict, rules: dict, learning_state: dict, dfs_projection_map: dict) -> dict:
+    values = candidate.get("last5", [])
+    avg_last5 = sum(values) / len(values)
+    trend = (values[-1] - values[0]) / max(1, len(values) - 1)
+
+    player_key = str(candidate.get("player", "")).strip().lower()
+    market = normalize_market(candidate.get("market"))
+    prop_adj = learning_state.get("player_prop_adjustments", {}) if isinstance(learning_state, dict) else {}
+    learned = safe_float(prop_adj.get(f"{player_key}::{market}", 0.0), 0.0)
+
+    dfs_proj = safe_float(dfs_projection_map.get(player_key, 0.0), 0.0)
+    dfs_bonus = clamp((dfs_proj - 30.0) * 0.015, -0.4, 0.4) if dfs_proj > 0 else 0.0
+
+    trend_weight = safe_float(rules.get("prop_trend_weight", 0.35), 0.35)
+    projected = avg_last5 + (trend * trend_weight) + learned + dfs_bonus
+
+    haircut = clamp(safe_float(rules.get("prop_call_haircut_pct", 0.10), 0.10), 0.10, 0.35)
+    safe_projection = projected * (1.0 - haircut)
+
+    return {
+        "avg_last5": avg_last5,
+        "trend": trend,
+        "learned_adj": learned,
+        "dfs_bonus": dfs_bonus,
+        "projected": projected,
+        "safe_projection": safe_projection,
+        "haircut_pct": haircut,
+    }
+
+
+def build_player_prop_parlay(
+    prop_candidates: List[dict],
+    rules: dict,
+    learning_state: Optional[dict] = None,
+    dfs_projection_map: Optional[dict] = None,
+) -> dict:
+    if not wagering_enabled(rules):
+        return {"legs": [], "total_odds": 0, "note": "NO_PROP_PARLAY: wagering disabled"}
+    if not prop_candidates:
+        return {"legs": [], "total_odds": 0, "note": "NO_PROP_PARLAY: no eligible prop candidates"}
+
+    state = learning_state or load_learning_state()
+    projection_map = dfs_projection_map or {}
+    min_line_edge = safe_float(rules.get("prop_min_line_edge", 0.35), 0.35)
+    min_model_edge = safe_float(rules.get("prop_min_model_edge_pct", 0.03), 0.03)
+
+    scored = []
+    for candidate in prop_candidates:
+        model = _prop_projection(candidate, rules, state, projection_map)
+        safe_projection = model["safe_projection"]
+        line = safe_float(candidate.get("line"), 0.0)
+        line_edge = safe_projection - line
+        if abs(line_edge) < min_line_edge:
+            continue
+
+        direction = "OVER" if line_edge > 0 else "UNDER"
+        odds = candidate["odds_over"] if direction == "OVER" else candidate["odds_under"]
+        if odds <= 1.0:
+            continue
+
+        values = candidate.get("last5", [])
+        over_rate = sum(1 for v in values if v > line) / len(values)
+        under_rate = sum(1 for v in values if v < line) / len(values)
+        success_rate = over_rate if direction == "OVER" else under_rate
+        trend = model["trend"]
+        if success_rate < 0.60 and abs(trend) < 0.15:
+            continue
+
+        implied = 1.0 / odds
+        trend_signal = clamp(trend * 0.05, -0.1, 0.1)
+        line_signal = clamp(abs(line_edge) * 0.05, 0.0, 0.12)
+        model_prob = clamp(success_rate + trend_signal + line_signal, 0.05, 0.92)
+        edge_prob = model_prob - implied
+        if edge_prob < min_model_edge:
+            continue
+
+        ev = candidate_expected_return(model_prob, odds)
+        if ev <= 0:
+            continue
+
+        safe_call = math.floor(safe_projection) if direction == "OVER" else math.ceil(safe_projection)
+        safe_call = max(safe_call, 0)
+        scored.append(
+            {
+                "player": candidate["player"],
+                "team": candidate["team"],
+                "opponent": candidate["opponent"],
+                "market": candidate["market"],
+                "direction": direction,
+                "line": round(line, 2),
+                "safe_call": safe_call,
+                "projected_raw": round(model["projected"], 3),
+                "projected_safe": round(safe_projection, 3),
+                "haircut_pct": round(model["haircut_pct"] * 100.0, 1),
+                "odds": odds,
+                "aus_odds": decimal_to_aus(odds),
+                "last5": values,
+                "last5_avg": round(model["avg_last5"], 3),
+                "trend": round(trend, 3),
+                "success_rate": round(success_rate, 3),
+                "implied_prob": round(implied, 4),
+                "model_prob": round(model_prob, 4),
+                "edge_prob": round(edge_prob, 4),
+                "ev": round(ev, 4),
+                "game": candidate["game"],
+            }
+        )
+
+    if not scored:
+        return {"legs": [], "total_odds": 0, "note": "NO_PROP_PARLAY: candidates failed edge/safety filters"}
+
+    scored.sort(key=lambda row: (row["edge_prob"], row["ev"], row["success_rate"]), reverse=True)
+    legs = []
+    seen = set()
+    for row in scored:
+        key = f"{row['player']}::{row['market']}"
+        if key in seen:
+            continue
+        seen.add(key)
+        legs.append(row)
+        if len(legs) >= int(rules.get("prop_max_legs", 3)):
+            break
+
+    total_odds = 1.0
+    for leg in legs:
+        total_odds *= leg["odds"]
+
+    return {
+        "legs": legs,
+        "total_odds": round(total_odds, 3) if legs else 0,
+        "note": "Prop parlay built from last-5 matchup history with 10%+ safety haircut",
+    }
+
+
 def generate_report(
     games_data: dict,
     odds_data: dict,
     lineup: dict,
     pivots: list,
     parlay: dict,
+    prop_parlay: dict,
     bet: dict,
     season: str,
     slot: str,
@@ -948,7 +1250,28 @@ Season: {season}
 - EV per 1u: {bet.get('edge_dollars_per_1u', 0):.2f}
 - Game: {bet.get('game', 'N/A')}
 - Reason: {bet.get('reason', 'N/A')}
+"""
 
+    report += f"""
+## Parlay of the Day (Player Props) ({prop_parlay.get('total_odds', 0)}x)
+"""
+    if prop_parlay.get("legs"):
+        for idx, leg in enumerate(prop_parlay["legs"], 1):
+            report += (
+                f"{idx}. {leg['player']} {leg['direction']} {leg['safe_call']} {leg['market']} "
+                f"(book line {leg['line']}) @ {leg['aus_odds']} ({leg['odds']}) - {leg['game']} "
+                f"edge={leg['edge_prob'] * 100:.2f}% ev={leg['ev']:.2f}\n"
+            )
+            report += (
+                f"   last5={leg['last5']} avg={leg['last5_avg']} trend={leg['trend']} "
+                f"haircut={leg['haircut_pct']}%\n"
+            )
+    else:
+        report += "- NO_PROP_PARLAY\n"
+
+    report += f"- Note: {prop_parlay.get('note', '')}\n"
+
+    report += f"""
 ## Risk Filters
 - B2B blocked teams tracked: {b2b_count}
 - Major-out teams blocked: {major_out_count}
@@ -970,6 +1293,8 @@ def main() -> None:
     parser.add_argument("--slot", choices=["all", "early", "late"], default="all", help="Slate slot window")
     parser.add_argument("--feedback-json", default="", help="Path to feedback JSON for learning updates")
     parser.add_argument("--major-outs-json", default="", help="Override path to major-out teams JSON")
+    parser.add_argument("--props-json", default="", help="Path to player props JSON payload")
+    parser.add_argument("--h2h-json", default="", help="Path to optional last-5 matchup JSON payload")
     args = parser.parse_args()
 
     print(f"[Pete NBA] Starting pipeline for date={args.date} season={args.season} slot={args.slot}")
@@ -1014,6 +1339,13 @@ def main() -> None:
         no_b2b_teams=b2b_teams,
         major_out_teams=major_out_teams,
     )
+    prop_candidates = load_prop_candidates(args.props_json, args.h2h_json)
+    prop_parlay = build_player_prop_parlay(
+        prop_candidates,
+        rules,
+        learning_state=learning_state,
+        dfs_projection_map=lineup.get("projection_map", {}),
+    )
 
     report = generate_report(
         games_data,
@@ -1021,6 +1353,7 @@ def main() -> None:
         lineup,
         pivots,
         parlay,
+        prop_parlay,
         bet,
         args.season,
         slot=args.slot,

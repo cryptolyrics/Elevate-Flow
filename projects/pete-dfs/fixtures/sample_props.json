@@ -1,0 +1,30 @@
+{
+  "games": [
+    {
+      "home": "Nuggets",
+      "away": "Lakers",
+      "props": [
+        {
+          "player": "J Murray",
+          "team": "Nuggets",
+          "opponent": "Lakers",
+          "market": "3PM",
+          "line": 2.5,
+          "odds_over": 1.95,
+          "odds_under": 1.85,
+          "last5_vs_opp": [4, 3, 3, 5, 4]
+        },
+        {
+          "player": "A Davis",
+          "team": "Lakers",
+          "opponent": "Nuggets",
+          "market": "REB",
+          "line": 11.5,
+          "odds_over": 1.9,
+          "odds_under": 1.9,
+          "last5_vs_opp": [10, 10, 9, 11, 10]
+        }
+      ]
+    }
+  ]
+}

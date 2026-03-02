@@ -120,6 +120,41 @@ class PetePipelineTests(unittest.TestCase):
         self.assertNotEqual(bet["pick"], "NO_BET")
         self.assertGreaterEqual(bet["edge_dollars_per_1u"], 0.01)
 
+    def test_load_prop_candidates_reads_last5_data(self):
+        props = self.module.load_prop_candidates(str(FIXTURES / "sample_props.json"))
+        self.assertGreaterEqual(len(props), 1)
+        first = props[0]
+        self.assertIn(first["market"], {"PTS", "REB", "AST", "STL", "3PM"})
+        self.assertEqual(len(first["last5"]), 5)
+
+    def test_build_player_prop_parlay_applies_safety_haircut(self):
+        os.environ["PETE_ENABLE_WAGERING"] = "1"
+        props = self.module.load_prop_candidates(str(FIXTURES / "sample_props.json"))
+        rules = {
+            "enabled": True,
+            "prop_call_haircut_pct": 0.10,
+            "prop_min_line_edge": 0.2,
+            "prop_min_model_edge_pct": 0.01,
+            "prop_max_legs": 3,
+            "prop_trend_weight": 0.35,
+        }
+        parlay = self.module.build_player_prop_parlay(
+            props,
+            rules,
+            learning_state={"player_prop_adjustments": {}},
+            dfs_projection_map={"j murray": 42.0},
+        )
+        self.assertTrue(parlay["legs"])
+        leg = parlay["legs"][0]
+        self.assertGreaterEqual(leg["haircut_pct"], 10.0)
+        self.assertIn(leg["direction"], {"OVER", "UNDER"})
+
+    def test_build_player_prop_parlay_disabled_without_quant_enable(self):
+        props = self.module.load_prop_candidates(str(FIXTURES / "sample_props.json"))
+        parlay = self.module.build_player_prop_parlay(props, {"enabled": False})
+        self.assertEqual(parlay["legs"], [])
+        self.assertIn("NO_PROP_PARLAY", parlay["note"])
+
 
 if __name__ == "__main__":
     unittest.main()

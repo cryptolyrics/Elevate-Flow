@@ -43,3 +43,7 @@ See `OPTIMIZATION-PLAN.md`.
 ## Daily Calls Contract
 
 See `docs/pete-daily-calls-framework.md`.
+
+Player-prop parlay inputs:
+- `--props-json` for the slate props feed
+- `--h2h-json` for optional last-five matchup history

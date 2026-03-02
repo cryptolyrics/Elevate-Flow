@@ -7,5 +7,10 @@
   "max_single_bet_decimal_odds": 3.0,
   "max_parlay_legs": 3,
   "smokie_percentile": 0.35,
-  "smokie_min_projection_delta": 1.0
+  "smokie_min_projection_delta": 1.0,
+  "prop_call_haircut_pct": 0.1,
+  "prop_min_line_edge": 0.35,
+  "prop_min_model_edge_pct": 0.03,
+  "prop_max_legs": 3,
+  "prop_trend_weight": 0.35
 }

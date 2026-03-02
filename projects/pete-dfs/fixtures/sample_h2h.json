@@ -1,0 +1,11 @@
+{
+  "matchups": [
+    {
+      "player": "J Murray",
+      "team": "Nuggets",
+      "opponent": "Lakers",
+      "market": "3PM",
+      "values": [4, 3, 3, 5, 4]
+    }
+  ]
+}
