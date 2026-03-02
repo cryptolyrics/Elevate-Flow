@@ -12,5 +12,6 @@
   "prop_min_line_edge": 0.35,
   "prop_min_model_edge_pct": 0.03,
   "prop_max_legs": 3,
-  "prop_trend_weight": 0.35
+  "prop_trend_weight": 0.35,
+  "prop_market_prior_weight": 0.25
 }

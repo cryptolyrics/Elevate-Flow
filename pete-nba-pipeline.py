@@ -252,6 +252,7 @@ def load_quant_rules() -> dict:
         "prop_min_model_edge_pct": 0.03,
         "prop_max_legs": 3,
         "prop_trend_weight": 0.35,
+        "prop_market_prior_weight": 0.25,
     }
 
     for candidate in _candidate_rules_paths():
@@ -302,12 +303,38 @@ def load_major_out_teams(override_path: Optional[str] = None) -> Set[str]:
     return set()
 
 
+def default_prop_market_stats() -> dict:
+    return {
+        "PTS": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
+        "REB": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
+        "AST": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
+        "STL": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
+        "3PM": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
+    }
+
+
+def _coerce_market_stats(raw: dict) -> dict:
+    base = default_prop_market_stats()
+    if not isinstance(raw, dict):
+        return base
+
+    for market, values in raw.items():
+        key = normalize_market(market)
+        if key not in base or not isinstance(values, dict):
+            continue
+        for field in ["over_hits", "over_misses", "under_hits", "under_misses"]:
+            base[key][field] = int(max(0, safe_float(values.get(field), base[key][field])))
+    return base
+
+
 def load_learning_state() -> dict:
     defaults = {
         "player_adjustments": {},
         "team_adjustments": {},
         "player_prop_adjustments": {},
-        "meta": {"dfs_samples": 0, "bet_samples": 0, "prop_samples": 0, "updated_at": ""},
+        "player_prop_opp_adjustments": {},
+        "prop_market_stats": default_prop_market_stats(),
+        "meta": {"dfs_samples": 0, "bet_samples": 0, "prop_samples": 0, "updated_at": "", "last_feedback_file": ""},
     }
 
     path = learning_state_path()
@@ -324,8 +351,17 @@ def load_learning_state() -> dict:
                 defaults["team_adjustments"] = {}
             if not isinstance(defaults.get("player_prop_adjustments"), dict):
                 defaults["player_prop_adjustments"] = {}
+            if not isinstance(defaults.get("player_prop_opp_adjustments"), dict):
+                defaults["player_prop_opp_adjustments"] = {}
+            defaults["prop_market_stats"] = _coerce_market_stats(defaults.get("prop_market_stats"))
             if not isinstance(defaults.get("meta"), dict):
-                defaults["meta"] = {"dfs_samples": 0, "bet_samples": 0, "prop_samples": 0, "updated_at": ""}
+                defaults["meta"] = {
+                    "dfs_samples": 0,
+                    "bet_samples": 0,
+                    "prop_samples": 0,
+                    "updated_at": "",
+                    "last_feedback_file": "",
+                }
     except Exception:
         return defaults
 
@@ -359,6 +395,9 @@ def update_learning_state_from_feedback(state: dict, feedback_path: Optional[str
     player_adj = state.setdefault("player_adjustments", {})
     team_adj = state.setdefault("team_adjustments", {})
     prop_adj = state.setdefault("player_prop_adjustments", {})
+    prop_opp_adj = state.setdefault("player_prop_opp_adjustments", {})
+    market_stats = _coerce_market_stats(state.get("prop_market_stats"))
+    state["prop_market_stats"] = market_stats
     meta = state.setdefault("meta", {})
 
     learning_rate_dfs = 0.08
@@ -408,7 +447,36 @@ def update_learning_state_from_feedback(state: dict, feedback_path: Optional[str
         error = actual - projected
         current = safe_float(prop_adj.get(key, 0.0), 0.0)
         prop_adj[key] = round(clamp(current + learning_rate_prop * error, -3.0, 3.0), 4)
+
+        opponent = normalize_team_key(sample.get("opponent", ""))
+        if opponent:
+            opp_key = f"{player.lower()}::{opponent}::{market}"
+            opp_current = safe_float(prop_opp_adj.get(opp_key, 0.0), 0.0)
+            prop_opp_adj[opp_key] = round(clamp(opp_current + (0.10 * error), -2.5, 2.5), 4)
+
+        direction = str(sample.get("direction", "")).strip().upper()
+        line = safe_float(sample.get("line"), math.nan)
+        won_value = sample.get("won")
+        if won_value is None and direction in {"OVER", "UNDER"} and not math.isnan(line):
+            if direction == "OVER":
+                won_value = actual > line
+            else:
+                won_value = actual < line
+
+        if direction in {"OVER", "UNDER"} and won_value is not None:
+            stats = market_stats.setdefault(
+                market, {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1}
+            )
+            if direction == "OVER":
+                key_name = "over_hits" if bool(won_value) else "over_misses"
+            else:
+                key_name = "under_hits" if bool(won_value) else "under_misses"
+            stats[key_name] = int(stats.get(key_name, 0)) + 1
+
         meta["prop_samples"] = int(meta.get("prop_samples", 0)) + 1
+
+    if feedback_path:
+        meta["last_feedback_file"] = str(Path(feedback_path))
 
     return state
 
@@ -917,6 +985,36 @@ def normalize_market(value) -> str:
     return aliases.get(token, token.upper())
 
 
+def market_prior_success_rate(learning_state: dict, market: str, direction: str) -> float:
+    stats_map = _coerce_market_stats(learning_state.get("prop_market_stats", {}))
+    stats = stats_map.get(normalize_market(market), {})
+    if str(direction).upper() == "OVER":
+        hits = int(stats.get("over_hits", 1))
+        misses = int(stats.get("over_misses", 1))
+    else:
+        hits = int(stats.get("under_hits", 1))
+        misses = int(stats.get("under_misses", 1))
+    return clamp(hits / max(1, hits + misses), 0.05, 0.95)
+
+
+def build_learning_summary(learning_state: dict) -> dict:
+    meta = learning_state.get("meta", {}) if isinstance(learning_state, dict) else {}
+    player_adj = learning_state.get("player_adjustments", {}) if isinstance(learning_state, dict) else {}
+    prop_adj = learning_state.get("player_prop_adjustments", {}) if isinstance(learning_state, dict) else {}
+
+    top_dfs = sorted(player_adj.items(), key=lambda item: abs(safe_float(item[1])), reverse=True)[:3]
+    top_prop = sorted(prop_adj.items(), key=lambda item: abs(safe_float(item[1])), reverse=True)[:3]
+
+    return {
+        "dfs_samples": int(meta.get("dfs_samples", 0)),
+        "bet_samples": int(meta.get("bet_samples", 0)),
+        "prop_samples": int(meta.get("prop_samples", 0)),
+        "last_feedback_file": str(meta.get("last_feedback_file", "")),
+        "top_dfs_adjustments": [{"player": k, "adj": round(safe_float(v), 4)} for k, v in top_dfs],
+        "top_prop_adjustments": [{"player_market": k, "adj": round(safe_float(v), 4)} for k, v in top_prop],
+    }
+
+
 def _prop_history_values(prop: dict, h2h_lookup: dict) -> List[float]:
     direct = (
         prop.get("last5_vs_opp")
@@ -1041,13 +1139,16 @@ def _prop_projection(candidate: dict, rules: dict, learning_state: dict, dfs_pro
     player_key = str(candidate.get("player", "")).strip().lower()
     market = normalize_market(candidate.get("market"))
     prop_adj = learning_state.get("player_prop_adjustments", {}) if isinstance(learning_state, dict) else {}
+    prop_opp_adj = learning_state.get("player_prop_opp_adjustments", {}) if isinstance(learning_state, dict) else {}
     learned = safe_float(prop_adj.get(f"{player_key}::{market}", 0.0), 0.0)
+    opponent_key = normalize_team_key(candidate.get("opponent", ""))
+    learned_opp = safe_float(prop_opp_adj.get(f"{player_key}::{opponent_key}::{market}", 0.0), 0.0)
 
     dfs_proj = safe_float(dfs_projection_map.get(player_key, 0.0), 0.0)
     dfs_bonus = clamp((dfs_proj - 30.0) * 0.015, -0.4, 0.4) if dfs_proj > 0 else 0.0
 
     trend_weight = safe_float(rules.get("prop_trend_weight", 0.35), 0.35)
-    projected = avg_last5 + (trend * trend_weight) + learned + dfs_bonus
+    projected = avg_last5 + (trend * trend_weight) + learned + learned_opp + dfs_bonus
 
     haircut = clamp(safe_float(rules.get("prop_call_haircut_pct", 0.10), 0.10), 0.10, 0.35)
     safe_projection = projected * (1.0 - haircut)
@@ -1056,6 +1157,7 @@ def _prop_projection(candidate: dict, rules: dict, learning_state: dict, dfs_pro
         "avg_last5": avg_last5,
         "trend": trend,
         "learned_adj": learned,
+        "learned_opp_adj": learned_opp,
         "dfs_bonus": dfs_bonus,
         "projected": projected,
         "safe_projection": safe_projection,
@@ -1078,6 +1180,7 @@ def build_player_prop_parlay(
     projection_map = dfs_projection_map or {}
     min_line_edge = safe_float(rules.get("prop_min_line_edge", 0.35), 0.35)
     min_model_edge = safe_float(rules.get("prop_min_model_edge_pct", 0.03), 0.03)
+    market_prior_weight = clamp(safe_float(rules.get("prop_market_prior_weight", 0.25), 0.25), 0.0, 0.6)
 
     scored = []
     for candidate in prop_candidates:
@@ -1097,6 +1200,7 @@ def build_player_prop_parlay(
         over_rate = sum(1 for v in values if v > line) / len(values)
         under_rate = sum(1 for v in values if v < line) / len(values)
         success_rate = over_rate if direction == "OVER" else under_rate
+        prior_rate = market_prior_success_rate(state, candidate["market"], direction)
         trend = model["trend"]
         if success_rate < 0.60 and abs(trend) < 0.15:
             continue
@@ -1104,7 +1208,8 @@ def build_player_prop_parlay(
         implied = 1.0 / odds
         trend_signal = clamp(trend * 0.05, -0.1, 0.1)
         line_signal = clamp(abs(line_edge) * 0.05, 0.0, 0.12)
-        model_prob = clamp(success_rate + trend_signal + line_signal, 0.05, 0.92)
+        blended_rate = ((1.0 - market_prior_weight) * success_rate) + (market_prior_weight * prior_rate)
+        model_prob = clamp(blended_rate + trend_signal + line_signal, 0.05, 0.92)
         edge_prob = model_prob - implied
         if edge_prob < min_model_edge:
             continue
@@ -1133,10 +1238,13 @@ def build_player_prop_parlay(
                 "last5_avg": round(model["avg_last5"], 3),
                 "trend": round(trend, 3),
                 "success_rate": round(success_rate, 3),
+                "market_prior_rate": round(prior_rate, 3),
                 "implied_prob": round(implied, 4),
                 "model_prob": round(model_prob, 4),
                 "edge_prob": round(edge_prob, 4),
                 "ev": round(ev, 4),
+                "learned_adj": round(model["learned_adj"], 3),
+                "learned_opp_adj": round(model["learned_opp_adj"], 3),
                 "game": candidate["game"],
             }
         )
@@ -1179,6 +1287,7 @@ def generate_report(
     slot: str,
     b2b_count: int,
     major_out_count: int,
+    learning_summary: dict,
 ) -> str:
     report = f"""# Pete NBA Daily - {TODAY}
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M %Z')}
@@ -1276,7 +1385,27 @@ Season: {season}
 - B2B blocked teams tracked: {b2b_count}
 - Major-out teams blocked: {major_out_count}
 - Rule: Home teams get +{safe_float(load_quant_rules().get('home_team_model_boost_pct', 0.10), 0.10) * 100:.0f}% model boost
+"""
 
+    report += f"""
+## Learning Engine
+- DFS samples learned: {learning_summary.get('dfs_samples', 0)}
+- Bet samples learned: {learning_summary.get('bet_samples', 0)}
+- Prop samples learned: {learning_summary.get('prop_samples', 0)}
+- Last feedback file: {learning_summary.get('last_feedback_file') or 'N/A'}
+"""
+
+    if learning_summary.get("top_dfs_adjustments"):
+        report += "- Top DFS adjustments:\n"
+        for row in learning_summary["top_dfs_adjustments"]:
+            report += f"  - {row['player']}: {row['adj']:+.3f}\n"
+
+    if learning_summary.get("top_prop_adjustments"):
+        report += "- Top prop adjustments:\n"
+        for row in learning_summary["top_prop_adjustments"]:
+            report += f"  - {row['player_market']}: {row['adj']:+.3f}\n"
+
+    report += """
 ---
 Safety: Script defaults to NO_BET until quant controls are explicitly enabled.
 """
@@ -1346,6 +1475,7 @@ def main() -> None:
         learning_state=learning_state,
         dfs_projection_map=lineup.get("projection_map", {}),
     )
+    learning_summary = build_learning_summary(learning_state)
 
     report = generate_report(
         games_data,
@@ -1359,6 +1489,7 @@ def main() -> None:
         slot=args.slot,
         b2b_count=len(b2b_teams),
         major_out_count=len(major_out_teams),
+        learning_summary=learning_summary,
     )
 
     if args.dry_run:

@@ -47,3 +47,9 @@ See `docs/pete-daily-calls-framework.md`.
 Player-prop parlay inputs:
 - `--props-json` for the slate props feed
 - `--h2h-json` for optional last-five matchup history
+
+## Local Season Data Lake
+
+Use local season storage for speed and reliability:
+- Script: `projects/pete-dfs/scripts/sync_nba_season_data.py`
+- Ops doc: `docs/pete-local-nba-data-lake.md`
