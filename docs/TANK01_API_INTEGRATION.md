@@ -23,11 +23,9 @@
 
 ---
 
-## API Key (for reference)
-```
-Host: tank01-fantasy-stats.p.rapidapi.com
-Key: 4e79ce67e3msh078608159eb2c89p1c42c5jsn587bb0769f45
-```
+## API Key
+
+Stored in: `projects/pete-dfs/.env` (add to `.gitignore`)
 
 ---
 

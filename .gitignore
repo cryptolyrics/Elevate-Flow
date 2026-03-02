@@ -7,3 +7,4 @@ __pycache__/
 services/clerk-service/dist/
 .clerk/
 .pete-workspace/
+projects/pete-dfs/.env
