@@ -1851,7 +1851,7 @@ def resolve_market_feeds(
     tank01_data_root: str,
     tank01_max_lag_days: int = 2,
     tank01_betting_props_json: str = "",
-    api_sports_fallback: bool = True,
+    api_sports_fallback: bool = False,
 ) -> Tuple[dict, dict, dict]:
     if not tank01_enable:
         games = fetch_nba_games(season, run_date)
@@ -2068,8 +2068,8 @@ def main() -> None:
     parser.add_argument(
         "--api-sports-fallback",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Allow API-Sports fallback when Tank01 snapshots are unavailable (default: true)",
+        default=False,
+        help="Allow API-Sports fallback when Tank01 snapshots are unavailable (default: false)",
     )
     args = parser.parse_args()
 
