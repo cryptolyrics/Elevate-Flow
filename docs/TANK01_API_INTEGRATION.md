@@ -56,29 +56,22 @@ Key: 4e79ce67e3msh078608159eb2c89p1c42c5jsn587bb0769f45
 
 ---
 
-## Integration Ideas for Pete's Engine
+## Integration Ideas for Pete's Engine (All 3 Tasks)
 
-### 1. Cross-Reference Player IDs
-- Match Draftstars player names → Tank01 player IDs
-- Use for injury cross-checking and prop data lookup
+### Task 1: DFS Optimization (Daily Lineup Building)
+- Cross-reference Draftstars names → Tank01 player IDs
+- Use `getNBAInjuryList` to filter OUT players
+- Use `getNBAProjections` as backup projection source
 
-### 2. Value Detection
-- Compare Draftstars salary vs projected fantasy points from Tank01
-- Find mispriced players (high projection, low salary)
+### Task 2: Backtesting (Historical Performance)
+- Historical betting props available by date
+- Box scores (`getNBABoxScore`) for actual results
+- Compare projected vs actual fantasy points
 
-### 3. Prop-Based Adjustments
-- Use prop lines as confidence indicators
-- If a player's pts line is 25+, they're expected to play big minutes
-- Use over/under to gauge upside
-
-### 4. Injury Overlay
-- `getNBAInjuryList` returns 64 players with:
-  - `designation` (Out, Day-To-Day)
-  - `injDate`, `injReturnDate`
-  - `description`
-
-### 5. Projections Backup
-- `getNBAProjections` as secondary projection source if Draftstars FPPG is stale
+### Task 3: Value Detection (Mispriced Players)
+- Compare Draftstars salary vs Tank01 projected FP
+- Find players with high props but low salary
+- Use over/under lines as confidence gauge
 
 ---
 
