@@ -3,11 +3,11 @@
 Pete's Daily NBA Pipeline
 
 Current mode:
-- Data source: API-Sports (NBA) + optional Draftstars CSV input
+- Data source: Tank01 snapshots first; API-Sports fallback only
 - Wagering output: fail-closed by default until quant controls are enabled
 
 Environment:
-- NBA_API_KEY (required for API calls)
+- NBA_API_KEY (optional, only needed if API-Sports fallback is used)
 - NBA_API_BASE_URL (optional, default: https://v2.nba.api-sports.io)
 - OPENCLAW_WORKSPACE (optional, default: ./.pete-workspace)
 - PETE_ENABLE_WAGERING=1 to allow bet recommendations
@@ -282,6 +282,20 @@ def _load_json(path: Path) -> dict:
     return {}
 
 
+def _dash_to_compact_date(value: str) -> str:
+    text = str(value or "").strip()
+    if len(text) == 10 and text.count("-") == 2:
+        return text.replace("-", "")
+    return text
+
+
+def _compact_to_dash_date(value: str) -> str:
+    text = str(value or "").strip()
+    if len(text) == 8 and text.isdigit():
+        return f"{text[0:4]}-{text[4:6]}-{text[6:8]}"
+    return text
+
+
 def american_to_decimal(value: str) -> float:
     text = str(value or "").strip()
     if not text:
@@ -379,6 +393,112 @@ def load_tank01_odds(run_date: str, data_root: str, max_lag_days: int = 2, expli
     }
 
 
+def load_tank01_games(run_date: str, data_root: str, max_lag_days: int = 2, explicit_props_json: str = "") -> dict:
+    odds_feed = load_tank01_odds(
+        run_date,
+        data_root,
+        max_lag_days=max_lag_days,
+        explicit_props_json=explicit_props_json,
+    )
+    games = []
+    for row in odds_feed.get("games", []):
+        if not isinstance(row, dict):
+            continue
+        home_code = normalize_team_code(row.get("home_code") or row.get("home"))
+        away_code = normalize_team_code(row.get("away_code") or row.get("away"))
+        if not home_code or not away_code:
+            continue
+        games.append(
+            {
+                "game_id": f"{_dash_to_compact_date(run_date)}_{away_code}@{home_code}",
+                "home_team": home_code,
+                "away_team": away_code,
+                "home_name": row.get("home") or home_code,
+                "away_name": row.get("away") or away_code,
+                "home_code": home_code,
+                "away_code": away_code,
+                "status": "Scheduled",
+                "start_time": _compact_to_dash_date(str(row.get("start", ""))),
+                "source": "tank01",
+            }
+        )
+    return {
+        "games": games,
+        "note": f"Tank01 games loaded: {len(games)}",
+        "source": odds_feed.get("source", ""),
+        "source_lag_days": int(odds_feed.get("source_lag_days", -1)),
+    }
+
+
+def load_tank01_teams_played_on_date(
+    run_date: str,
+    data_root: str,
+    max_lag_days: int = 0,
+    explicit_props_json: str = "",
+) -> Set[str]:
+    odds_feed = load_tank01_odds(
+        run_date,
+        data_root,
+        max_lag_days=max(0, max_lag_days),
+        explicit_props_json=explicit_props_json,
+    )
+    teams: Set[str] = set()
+    for game in odds_feed.get("games", []):
+        home = normalize_team_code(game.get("home_code") or game.get("home"))
+        away = normalize_team_code(game.get("away_code") or game.get("away"))
+        if home:
+            teams.add(normalize_team_key(home))
+        if away:
+            teams.add(normalize_team_key(away))
+    return teams
+
+
+def _collect_tank01_dicts(node, sink: List[dict]) -> None:
+    if isinstance(node, dict):
+        sink.append(node)
+        for value in node.values():
+            _collect_tank01_dicts(value, sink)
+    elif isinstance(node, list):
+        for item in node:
+            _collect_tank01_dicts(item, sink)
+
+
+def load_tank01_major_out_teams(
+    run_date: str,
+    data_root: str,
+    max_lag_days: int = 2,
+    explicit_injuries_json: str = "",
+) -> Set[str]:
+    if explicit_injuries_json:
+        source_path = Path(explicit_injuries_json)
+        if not source_path.exists():
+            return set()
+    else:
+        source_path, _ = _resolve_dated_json(Path(data_root) / "nba" / "injuries", run_date, max_lag_days)
+        if source_path is None:
+            return set()
+
+    payload = _load_json(source_path)
+    rows: List[dict] = []
+    _collect_tank01_dicts(payload.get("body", payload), rows)
+
+    outs: Set[str] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        team_raw = row.get("team") or row.get("teamAbv") or row.get("teamCode") or row.get("teamName") or ""
+        team = normalize_team_code(team_raw)
+        if not team:
+            continue
+        status_text = " ".join(
+            str(row.get(field, "")).strip()
+            for field in ["status", "injuryStatus", "designation", "description", "injury", "note", "comment"]
+        ).upper()
+        if any(token in status_text for token in [" OUT", "OUT ", "OUT", "DOUBTFUL", "INACTIVE", "IR"]):
+            outs.add(normalize_team_key(team))
+    return outs
+
+
 def merge_odds_data(primary: dict, secondary: dict) -> dict:
     merged = {}
 
@@ -403,7 +523,7 @@ def merge_odds_data(primary: dict, secondary: dict) -> dict:
                     "sources": set(),
                 }
             current = merged[key]
-            current["sources"].add(game.get("source", "api-sports"))
+            current["sources"].add(game.get("source", "unknown"))
             odds = game.get("odds", {})
             if isinstance(odds, dict):
                 for team, odd in odds.items():
@@ -1702,6 +1822,55 @@ def build_player_prop_parlay(
     }
 
 
+def resolve_market_feeds(
+    season: str,
+    run_date: str,
+    tank01_enable: bool,
+    tank01_data_root: str,
+    tank01_max_lag_days: int = 2,
+    tank01_betting_props_json: str = "",
+    api_sports_fallback: bool = True,
+) -> Tuple[dict, dict, dict]:
+    if not tank01_enable:
+        games = fetch_nba_games(season, run_date)
+        odds = fetch_nba_odds(run_date, season)
+        return games, odds, {"primary": "api-sports", "fallback_used": False, "fallback_components": []}
+
+    tank_games = load_tank01_games(
+        run_date,
+        tank01_data_root,
+        max_lag_days=max(0, tank01_max_lag_days),
+        explicit_props_json=tank01_betting_props_json,
+    )
+    tank_odds = load_tank01_odds(
+        run_date,
+        tank01_data_root,
+        max_lag_days=max(0, tank01_max_lag_days),
+        explicit_props_json=tank01_betting_props_json,
+    )
+
+    games = tank_games
+    odds = tank_odds
+    fallback_components: List[str] = []
+
+    if not games.get("games") and api_sports_fallback:
+        games = fetch_nba_games(season, run_date)
+        fallback_components.append("games")
+    if not odds.get("games") and api_sports_fallback:
+        odds = fetch_nba_odds(run_date, season)
+        fallback_components.append("odds")
+
+    return games, odds, {
+        "primary": "tank01",
+        "fallback_used": bool(fallback_components),
+        "fallback_components": fallback_components,
+        "tank01_odds_source": tank_odds.get("source", ""),
+        "tank01_odds_lag_days": int(tank_odds.get("source_lag_days", -1)),
+        "tank01_games_source": tank_games.get("source", ""),
+        "tank01_games_lag_days": int(tank_games.get("source_lag_days", -1)),
+    }
+
+
 def generate_report(
     games_data: dict,
     odds_data: dict,
@@ -1715,13 +1884,19 @@ def generate_report(
     b2b_count: int,
     major_out_count: int,
     learning_summary: dict,
+    data_source_summary: Optional[dict] = None,
 ) -> str:
+    source_summary = data_source_summary or {}
+    market_primary = source_summary.get("primary", "unknown")
+    fallback_components = source_summary.get("fallback_components", [])
+    fallback_text = ", ".join(fallback_components) if fallback_components else "none"
     report = f"""# Pete NBA Daily - {TODAY}
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M %Z')}
 Season: {season}
 
 ## Data Sources
-- Games/Odds: API-Sports ({NBA_API_BASE_URL})
+- Primary market feed: {market_primary}
+- API-Sports fallback used: {fallback_text}
 
 ## Games Today ({games_data.get('note', '')})
 """
@@ -1867,42 +2042,65 @@ def main() -> None:
     parser.add_argument("--tank01-props-default-odds", type=float, default=1.87, help="Fallback decimal odds for Tank01 props when per-prop odds are unavailable")
     parser.add_argument("--tank01-betting-props-json", default="", help="Optional explicit Tank01 betting-props JSON path")
     parser.add_argument("--tank01-players-json", default="", help="Optional explicit Tank01 players JSON path")
+    parser.add_argument("--tank01-injuries-json", default="", help="Optional explicit Tank01 injuries JSON path")
+    parser.add_argument(
+        "--api-sports-fallback",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Allow API-Sports fallback when Tank01 snapshots are unavailable (default: true)",
+    )
     args = parser.parse_args()
 
     print(f"[Pete NBA] Starting pipeline for date={args.date} season={args.season} slot={args.slot}")
 
     api_key = load_env_secrets()
-    if not api_key:
-        print("[Pete NBA] WARNING: NBA_API_KEY not set")
+    if not api_key and (not args.tank01_enable or args.api_sports_fallback):
+        print("[Pete NBA] WARNING: NBA_API_KEY not set; API-Sports fallback is unavailable")
 
     rules = load_quant_rules()
     learning_state = load_learning_state()
     learning_state = update_learning_state_from_feedback(learning_state, args.feedback_json)
     save_learning_state(learning_state)
 
-    games_data = fetch_nba_games(args.season, args.date)
-    odds_data = fetch_nba_odds(args.date, args.season)
-    tank01_odds_meta = {"note": "Tank01 disabled"}
-    odds_for_wagering = odds_data
+    games_data, odds_for_wagering, source_summary = resolve_market_feeds(
+        args.season,
+        args.date,
+        tank01_enable=bool(args.tank01_enable),
+        tank01_data_root=args.tank01_data_root,
+        tank01_max_lag_days=max(0, args.tank01_max_lag_days),
+        tank01_betting_props_json=args.tank01_betting_props_json,
+        api_sports_fallback=bool(args.api_sports_fallback),
+    )
+    tank01_odds_meta = {
+        "source": source_summary.get("tank01_odds_source", ""),
+        "source_lag_days": int(source_summary.get("tank01_odds_lag_days", -1)),
+        "games": len(odds_for_wagering.get("games", [])) if source_summary.get("primary") == "tank01" else 0,
+        "fallback_components": source_summary.get("fallback_components", []),
+    }
+
+    previous_date = (datetime.strptime(args.date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
     if args.tank01_enable:
-        tank01_odds = load_tank01_odds(
+        b2b_teams = load_tank01_teams_played_on_date(
+            previous_date,
+            args.tank01_data_root,
+            max_lag_days=0,
+        )
+        if not b2b_teams and args.api_sports_fallback:
+            b2b_teams = fetch_teams_played_on_date(args.season, previous_date)
+    else:
+        b2b_teams = fetch_teams_played_on_date(args.season, previous_date)
+
+    major_out_manual = load_major_out_teams(args.major_outs_json)
+    major_out_tank01 = set()
+    if args.tank01_enable:
+        major_out_tank01 = load_tank01_major_out_teams(
             args.date,
             args.tank01_data_root,
             max_lag_days=max(0, args.tank01_max_lag_days),
-            explicit_props_json=args.tank01_betting_props_json,
+            explicit_injuries_json=args.tank01_injuries_json,
         )
-        tank01_odds_meta = {
-            "source": tank01_odds.get("source", ""),
-            "source_lag_days": int(tank01_odds.get("source_lag_days", -1)),
-            "games": len(tank01_odds.get("games", [])),
-        }
-        odds_for_wagering = merge_odds_data(odds_data, tank01_odds)
-
-    previous_date = (datetime.strptime(args.date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
-    b2b_teams = fetch_teams_played_on_date(args.season, previous_date)
-    major_out_manual = load_major_out_teams(args.major_outs_json)
-    major_out_espn = load_espn_major_out_teams(args.espn_injuries_json)
-    major_out_teams = set(major_out_manual) | set(major_out_espn)
+    major_out_espn = load_espn_major_out_teams(args.espn_injuries_json) if not major_out_tank01 else set()
+    major_out_teams = set(major_out_manual) | set(major_out_tank01) | set(major_out_espn)
 
     lineup = build_best_lineup(
         games_data,
@@ -1941,7 +2139,10 @@ def main() -> None:
             explicit_props_json=args.tank01_betting_props_json,
             explicit_players_json=args.tank01_players_json,
         )
-    prop_candidates = merge_prop_candidates(prop_candidates_primary, tank01_prop_candidates)
+    if args.tank01_enable and tank01_prop_candidates:
+        prop_candidates = merge_prop_candidates(tank01_prop_candidates, prop_candidates_primary)
+    else:
+        prop_candidates = merge_prop_candidates(prop_candidates_primary, tank01_prop_candidates)
     prop_parlay = build_player_prop_parlay(
         prop_candidates,
         rules,
@@ -1963,6 +2164,7 @@ def main() -> None:
         b2b_count=len(b2b_teams),
         major_out_count=len(major_out_teams),
         learning_summary=learning_summary,
+        data_source_summary=source_summary,
     )
 
     report += (
@@ -1970,6 +2172,7 @@ def main() -> None:
         f"- Odds source: {tank01_odds_meta.get('source', 'N/A')}\n"
         f"- Odds lag days: {tank01_odds_meta.get('source_lag_days', -1)}\n"
         f"- Odds games loaded: {tank01_odds_meta.get('games', 0)}\n"
+        f"- API fallback components: {', '.join(tank01_odds_meta.get('fallback_components', [])) or 'none'}\n"
         f"- Prop source: {tank01_prop_meta.get('source', 'N/A')}\n"
         f"- Prop lag days: {tank01_prop_meta.get('source_lag_days', -1)}\n"
         f"- Prop candidates merged: {len(prop_candidates)}\n"

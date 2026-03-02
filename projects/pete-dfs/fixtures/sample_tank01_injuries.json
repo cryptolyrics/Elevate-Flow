@@ -1,0 +1,19 @@
+{
+  "statusCode": 200,
+  "body": [
+    {
+      "playerID": "1",
+      "playerName": "LeBron James",
+      "team": "LAL",
+      "injuryStatus": "Out",
+      "description": "ankle soreness"
+    },
+    {
+      "playerID": "2",
+      "playerName": "Jayson Tatum",
+      "team": "BOS",
+      "injuryStatus": "Probable",
+      "description": "rest management"
+    }
+  ]
+}

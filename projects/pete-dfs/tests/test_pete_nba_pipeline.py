@@ -183,6 +183,51 @@ class PetePipelineTests(unittest.TestCase):
             self.assertIn("MIL", game["odds"])
             self.assertGreater(game["odds"]["BOS"], 1.0)
 
+    def test_load_tank01_games_from_props_snapshot(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            props_dir = root / "nba" / "betting-props"
+            props_dir.mkdir(parents=True, exist_ok=True)
+            sample_props = json.loads((FIXTURES / "sample_tank01_props.json").read_text())
+            (props_dir / "2026-03-02.json").write_text(json.dumps(sample_props), encoding="utf-8")
+
+            games = self.module.load_tank01_games("2026-03-03", str(root), max_lag_days=2)
+            self.assertEqual(len(games["games"]), 1)
+            first = games["games"][0]
+            self.assertEqual(first["home_code"], "MIL")
+            self.assertEqual(first["away_code"], "BOS")
+            self.assertEqual(games["source_lag_days"], 1)
+
+    def test_resolve_market_feeds_prefers_tank01(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            props_dir = root / "nba" / "betting-props"
+            props_dir.mkdir(parents=True, exist_ok=True)
+            sample_props = json.loads((FIXTURES / "sample_tank01_props.json").read_text())
+            (props_dir / "2026-03-02.json").write_text(json.dumps(sample_props), encoding="utf-8")
+
+            games, odds, summary = self.module.resolve_market_feeds(
+                season="2026",
+                run_date="2026-03-03",
+                tank01_enable=True,
+                tank01_data_root=str(root),
+                tank01_max_lag_days=2,
+                api_sports_fallback=True,
+            )
+            self.assertEqual(summary["primary"], "tank01")
+            self.assertFalse(summary["fallback_used"])
+            self.assertEqual(len(games["games"]), 1)
+            self.assertEqual(len(odds["games"]), 1)
+
+    def test_load_tank01_major_out_teams_from_fixture(self):
+        teams = self.module.load_tank01_major_out_teams(
+            "2026-03-03",
+            str(FIXTURES),
+            max_lag_days=2,
+            explicit_injuries_json=str(FIXTURES / "sample_tank01_injuries.json"),
+        )
+        self.assertIn("lal", teams)
+
     def test_load_tank01_prop_candidates_with_h2h(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = pathlib.Path(tmpdir)

@@ -4,7 +4,8 @@ This is Pete's preserved workstream and optimization track.
 
 ## Current Safety State
 
-- Data source moved to API-Sports in `scripts/pete-nba-pipeline.py`.
+- Market data in `scripts/pete-nba-pipeline.py` is Tank01-first.
+- API-Sports is fallback-only (optional via `--api-sports-fallback`).
 - Betting recommendations are fail-closed by default:
   - output is `NO_BET` unless quant rules are enabled and env gating is explicit.
 
@@ -24,7 +25,7 @@ Hard risk filters for wagering:
 - `scripts/draftstars_final.py`
 
 `scripts/pete-nba-pipeline.py` Tank01 support:
-- Bet of the Day: merges Tank01 moneyline odds with API-Sports odds
+- Bet of the Day: uses Tank01 moneyline odds as primary feed
 - Parlay of the Day: ingests Tank01 player props (+ players mapping) into prop candidate engine
 - Date-lag fallback for AU runs via `--tank01-max-lag-days`
 

@@ -136,7 +136,13 @@ Example optional `--h2h-json` payload:
 Dry run:
 
 ```bash
-python3 pete-nba-pipeline.py --dry-run --date 2026-03-02 --season 2026
+python3 pete-nba-pipeline.py \
+  --dry-run \
+  --date 2026-03-02 \
+  --season 2026 \
+  --tank01-enable \
+  --tank01-data-root projects/pete-dfs/data-lake \
+  --no-api-sports-fallback
 ```
 
 Run with DFS CSV:
@@ -209,6 +215,7 @@ python3 pete-nba-pipeline.py \
 - ESPN injuries: `projects/pete-dfs/data-lake/nba/injuries/latest.json`
 
 ## Notes
+- Market feed is Tank01-first in `pete-nba-pipeline.py`; API-Sports is fallback-only.
 - Wagering remains fail-closed unless both are set:
   - `PETE_ENABLE_WAGERING=1`
   - quant rules file has `"enabled": true`
