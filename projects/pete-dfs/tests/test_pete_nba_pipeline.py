@@ -126,6 +126,36 @@ class PetePipelineTests(unittest.TestCase):
         self.assertNotEqual(bet["pick"], "NO_BET")
         self.assertGreaterEqual(bet["edge_dollars_per_1u"], 0.01)
 
+    def test_get_bet_pick_reason_reports_ev_gate(self):
+        os.environ["PETE_ENABLE_WAGERING"] = "1"
+        odds_data = {
+            "games": [
+                {
+                    "home": "Lakers",
+                    "away": "Warriors",
+                    "odds": {"Lakers": 2.30, "Warriors": 1.70},
+                }
+            ]
+        }
+        rules = {
+            "enabled": True,
+            "min_edge_pct": 0.02,
+            "min_model_prob": 0.52,
+            "min_edge_dollars_per_1u": 0.50,
+            "home_team_model_boost_pct": 0.10,
+            "max_single_bet_decimal_odds": 3.0,
+        }
+        bet = self.module.get_bet_pick(
+            {},
+            odds_data,
+            rules=rules,
+            learning_state={"team_adjustments": {}},
+            no_b2b_teams=set(),
+            major_out_teams=set(),
+        )
+        self.assertEqual(bet["pick"], "NO_BET")
+        self.assertIn("min_edge_dollars_per_1u", bet.get("reason", ""))
+
     def test_team_parlay_can_be_looser_than_single_bet(self):
         os.environ["PETE_ENABLE_WAGERING"] = "1"
         odds_data = {
@@ -201,6 +231,66 @@ class PetePipelineTests(unittest.TestCase):
         parlay = self.module.build_player_prop_parlay(props, {"enabled": False})
         self.assertEqual(parlay["legs"], [])
         self.assertIn("NO_PROP_PARLAY", parlay["note"])
+
+    def test_build_player_prop_parlay_avoids_same_player_multi_market(self):
+        os.environ["PETE_ENABLE_WAGERING"] = "1"
+        candidates = [
+            {
+                "player": "Player A",
+                "team": "AAA",
+                "opponent": "BBB",
+                "market": "PTS",
+                "line": 20.5,
+                "odds_over": 1.9,
+                "odds_under": 1.9,
+                "last5": [26, 25, 24, 23, 22],
+                "game": "AAA @ BBB",
+            },
+            {
+                "player": "Player A",
+                "team": "AAA",
+                "opponent": "BBB",
+                "market": "AST",
+                "line": 5.5,
+                "odds_over": 1.9,
+                "odds_under": 1.9,
+                "last5": [8, 8, 7, 7, 6],
+                "game": "AAA @ BBB",
+            },
+            {
+                "player": "Player B",
+                "team": "CCC",
+                "opponent": "DDD",
+                "market": "REB",
+                "line": 7.5,
+                "odds_over": 1.9,
+                "odds_under": 1.9,
+                "last5": [11, 10, 9, 9, 8],
+                "game": "CCC @ DDD",
+            },
+            {
+                "player": "Player C",
+                "team": "EEE",
+                "opponent": "FFF",
+                "market": "3PM",
+                "line": 2.5,
+                "odds_over": 1.9,
+                "odds_under": 1.9,
+                "last5": [5, 4, 4, 3, 3],
+                "game": "EEE @ FFF",
+            },
+        ]
+        rules = {
+            "enabled": True,
+            "prop_call_haircut_pct": 0.10,
+            "prop_min_line_edge": 0.2,
+            "prop_min_model_edge_pct": 0.01,
+            "prop_max_legs": 3,
+            "prop_trend_weight": 0.35,
+        }
+        parlay = self.module.build_player_prop_parlay(candidates, rules, learning_state={"player_prop_adjustments": {}}, dfs_projection_map={})
+        players = [row.get("player") for row in parlay.get("legs", [])]
+        self.assertEqual(len(players), len(set(players)))
 
     def test_load_espn_major_out_teams_from_fixture(self):
         teams = self.module.load_espn_major_out_teams(str(FIXTURES / "sample_espn_injuries.json"))

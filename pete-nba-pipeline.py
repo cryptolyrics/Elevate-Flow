@@ -1424,26 +1424,16 @@ def get_bet_pick(
     min_edge_pct = safe_float(rules.get("min_edge_pct", 0.03), 0.03)
     min_edge_dollars = safe_float(rules.get("min_edge_dollars_per_1u", 0.40), 0.40)
 
-    best = None
-    for candidate in _iter_candidates(
-        odds_data,
-        rules,
-        state,
-        no_b2b_teams=no_b2b_teams,
-        major_out_teams=major_out_teams,
-    ):
-        if candidate["edge"] < min_edge_pct:
-            continue
-        if candidate["edge_dollars_per_1u"] < min_edge_dollars:
-            continue
-
-        candidate["band"] = "rule-gated"
-        candidate["reason"] = "Candidate passed quant, edge, and risk filters"
-
-        if best is None or candidate["edge_dollars_per_1u"] > best["edge_dollars_per_1u"]:
-            best = candidate
-
-    if best is None:
+    all_candidates = list(
+        _iter_candidates(
+            odds_data,
+            rules,
+            state,
+            no_b2b_teams=no_b2b_teams,
+            major_out_teams=major_out_teams,
+        )
+    )
+    if not all_candidates:
         return {
             "pick": "NO_BET",
             "odds": 0,
@@ -1454,8 +1444,47 @@ def get_bet_pick(
             "edge_dollars_per_1u": 0,
             "band": "N/A",
             "game": "N/A",
-            "reason": "No candidate met quant thresholds after B2B/major-out filters",
+            "reason": "No eligible teams after B2B/major-out and odds filters",
         }
+
+    edge_pass = [candidate for candidate in all_candidates if candidate["edge"] >= min_edge_pct]
+    if not edge_pass:
+        best_edge = max(candidate["edge"] for candidate in all_candidates)
+        return {
+            "pick": "NO_BET",
+            "odds": 0,
+            "aus_odds": "N/A",
+            "implied_prob": 0,
+            "model_prob": 0,
+            "edge": 0,
+            "edge_dollars_per_1u": 0,
+            "band": "N/A",
+            "game": "N/A",
+            "reason": f"No candidate met min_edge_pct ({min_edge_pct * 100:.2f}%); best was {best_edge * 100:.2f}%",
+        }
+
+    ev_pass = [candidate for candidate in edge_pass if candidate["edge_dollars_per_1u"] >= min_edge_dollars]
+    if not ev_pass:
+        best_ev = max(candidate["edge_dollars_per_1u"] for candidate in edge_pass)
+        return {
+            "pick": "NO_BET",
+            "odds": 0,
+            "aus_odds": "N/A",
+            "implied_prob": 0,
+            "model_prob": 0,
+            "edge": 0,
+            "edge_dollars_per_1u": 0,
+            "band": "N/A",
+            "game": "N/A",
+            "reason": f"No candidate met min_edge_dollars_per_1u ({min_edge_dollars:.2f}); best was {best_ev:.2f}",
+        }
+
+    best = None
+    for candidate in ev_pass:
+        candidate["band"] = "rule-gated"
+        candidate["reason"] = "Candidate passed quant, edge, and risk filters"
+        if best is None or candidate["edge_dollars_per_1u"] > best["edge_dollars_per_1u"]:
+            best = candidate
 
     return best
 
@@ -2183,7 +2212,7 @@ def build_player_prop_parlay(
     legs = []
     seen = set()
     for row in scored:
-        key = f"{row['player']}::{row['market']}"
+        key = str(row.get("player", "")).strip().lower()
         if key in seen:
             continue
         seen.add(key)
