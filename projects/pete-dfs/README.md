@@ -40,6 +40,7 @@ Hard risk filters for wagering:
 - Prop history quality guards:
   - prioritize player-vs-opponent local history when available
   - filter low-minute historical outliers to reduce injury-noise distortion
+  - apply spread/total context bias so heavy-favorite high-total games don't default to weak UNDERS
 
 `scripts/PeteDFS_engine.py` now emits Mission Control JSON output by default:
 - `OPENCLAW_WORKSPACE/logs/Pete/<YYYY-MM-DD>-pete-dfs.json`

@@ -223,6 +223,46 @@ class PetePipelineTests(unittest.TestCase):
             self.assertIn("BOS", game["odds"])
             self.assertIn("MIL", game["odds"])
             self.assertGreater(game["odds"]["BOS"], 1.0)
+            self.assertIsInstance(game.get("market_context", {}), dict)
+
+    def test_prop_context_bias_penalizes_under_for_high_total_favorite(self):
+        odds_data = {
+            "games": [
+                {
+                    "home": "UTA",
+                    "away": "DEN",
+                    "home_code": "UTA",
+                    "away_code": "DEN",
+                    "odds": {"DEN": 1.20, "UTA": 4.50},
+                    "market_context": {
+                        "consensus_total": 241.5,
+                        "spread_by_team": {"DEN": -12.0, "UTA": 12.0},
+                    },
+                }
+            ]
+        }
+        context = self.module.build_prop_game_context(odds_data)
+        rules = {
+            "prop_context_bias_step": 0.02,
+            "prop_context_max_bias": 0.05,
+            "prop_context_total_over_threshold": 233.0,
+            "prop_context_total_under_threshold": 220.0,
+            "prop_context_favorite_spread_threshold": 6.5,
+        }
+        under_bias = self.module.prop_game_context_bias(
+            {"team": "DEN", "opponent": "UTA", "market": "PTS"},
+            "UNDER",
+            context,
+            rules,
+        )
+        over_bias = self.module.prop_game_context_bias(
+            {"team": "DEN", "opponent": "UTA", "market": "PTS"},
+            "OVER",
+            context,
+            rules,
+        )
+        self.assertLess(under_bias, 0.0)
+        self.assertGreater(over_bias, 0.0)
 
     def test_load_tank01_games_from_props_snapshot(self):
         with tempfile.TemporaryDirectory() as tmpdir:

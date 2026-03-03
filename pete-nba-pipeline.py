@@ -401,6 +401,10 @@ def load_tank01_odds(run_date: str, data_root: str, max_lag_days: int = 2, expli
             "start": str(row.get("gameDate", "")),
             "odds": {},
             "source": "tank01",
+            "market_context": {
+                "totals": [],
+                "spread_by_team": {home: [], away: []},
+            },
         }
 
         books = row.get("sportsBooks", [])
@@ -418,7 +422,34 @@ def load_tank01_odds(run_date: str, data_root: str, max_lag_days: int = 2, expli
                     prev = safe_float(normalized["odds"].get(away), 0.0)
                     normalized["odds"][away] = max(prev, away_ml)
 
+                total_over = safe_float(odds.get("totalOver"), math.nan)
+                total_under = safe_float(odds.get("totalUnder"), math.nan)
+                if not math.isnan(total_over):
+                    normalized["market_context"]["totals"].append(total_over)
+                if not math.isnan(total_under):
+                    normalized["market_context"]["totals"].append(total_under)
+
+                home_spread = safe_float(odds.get("homeTeamSpread"), math.nan)
+                away_spread = safe_float(odds.get("awayTeamSpread"), math.nan)
+                if not math.isnan(home_spread):
+                    normalized["market_context"]["spread_by_team"][home].append(home_spread)
+                if not math.isnan(away_spread):
+                    normalized["market_context"]["spread_by_team"][away].append(away_spread)
+
         if normalized["odds"]:
+            totals = [safe_float(v, math.nan) for v in normalized["market_context"].get("totals", [])]
+            totals = [v for v in totals if not math.isnan(v)]
+            spread_by_team = normalized["market_context"].get("spread_by_team", {})
+            spread_summary = {}
+            for team_code, values in spread_by_team.items():
+                valid = [safe_float(v, math.nan) for v in values]
+                valid = [v for v in valid if not math.isnan(v)]
+                if valid:
+                    spread_summary[team_code] = round(float(statistics.median(valid)), 3)
+            normalized["market_context"] = {
+                "consensus_total": round(float(statistics.median(totals)), 3) if totals else 0.0,
+                "spread_by_team": spread_summary,
+            }
             games.append(normalized)
 
     return {
@@ -557,9 +588,22 @@ def merge_odds_data(primary: dict, secondary: dict) -> dict:
                     "start": game.get("start", ""),
                     "odds": {},
                     "sources": set(),
+                    "market_context": {},
                 }
             current = merged[key]
             current["sources"].add(game.get("source", "unknown"))
+            if isinstance(game.get("market_context"), dict):
+                incoming = game.get("market_context", {})
+                current_total = safe_float(current.get("market_context", {}).get("consensus_total"), 0.0)
+                incoming_total = safe_float(incoming.get("consensus_total"), 0.0)
+                if incoming_total > 0.0 and current_total <= 0.0:
+                    current["market_context"] = incoming
+                elif incoming_total > 0.0 and current_total > 0.0:
+                    # Prefer richer spread coverage.
+                    current_spreads = len((current.get("market_context", {}) or {}).get("spread_by_team", {}))
+                    incoming_spreads = len(incoming.get("spread_by_team", {}))
+                    if incoming_spreads >= current_spreads:
+                        current["market_context"] = incoming
             odds = game.get("odds", {})
             if isinstance(odds, dict):
                 for team, odd in odds.items():
@@ -635,6 +679,11 @@ def load_quant_rules() -> dict:
         "prop_max_legs": 3,
         "prop_trend_weight": 0.35,
         "prop_market_prior_weight": 0.25,
+        "prop_context_bias_step": 0.02,
+        "prop_context_max_bias": 0.05,
+        "prop_context_total_over_threshold": 233.0,
+        "prop_context_total_under_threshold": 220.0,
+        "prop_context_favorite_spread_threshold": 6.5,
     }
 
     for candidate in _candidate_rules_paths():
@@ -1446,6 +1495,86 @@ def build_learning_summary(learning_state: dict) -> dict:
     }
 
 
+def build_prop_game_context(odds_data: dict) -> dict:
+    context = {}
+    for game in odds_data.get("games", []):
+        if not isinstance(game, dict):
+            continue
+        home = normalize_team_code(game.get("home_code") or game.get("home"))
+        away = normalize_team_code(game.get("away_code") or game.get("away"))
+        if not home or not away:
+            continue
+
+        market_ctx = game.get("market_context", {}) if isinstance(game.get("market_context"), dict) else {}
+        consensus_total = safe_float(market_ctx.get("consensus_total"), 0.0)
+        spread_by_team = market_ctx.get("spread_by_team", {}) if isinstance(market_ctx.get("spread_by_team"), dict) else {}
+        home_spread = safe_float(spread_by_team.get(home), math.nan)
+        away_spread = safe_float(spread_by_team.get(away), math.nan)
+
+        # Derive spread proxy from moneyline when spread missing.
+        odds = game.get("odds", {}) if isinstance(game.get("odds"), dict) else {}
+        home_price = safe_float(odds.get(home), math.nan)
+        away_price = safe_float(odds.get(away), math.nan)
+        if (math.isnan(home_spread) or math.isnan(away_spread)) and home_price > 1.0 and away_price > 1.0:
+            home_prob = 1.0 / home_price
+            away_prob = 1.0 / away_price
+            spread_proxy = (away_prob - home_prob) * 20.0
+            if math.isnan(home_spread):
+                home_spread = round(spread_proxy, 3)
+            if math.isnan(away_spread):
+                away_spread = round(-spread_proxy, 3)
+
+        context[f"{normalize_team_key(home)}::{normalize_team_key(away)}"] = {
+            "team": home,
+            "opponent": away,
+            "consensus_total": consensus_total,
+            "team_spread": home_spread,
+        }
+        context[f"{normalize_team_key(away)}::{normalize_team_key(home)}"] = {
+            "team": away,
+            "opponent": home,
+            "consensus_total": consensus_total,
+            "team_spread": away_spread,
+        }
+    return context
+
+
+def prop_game_context_bias(candidate: dict, direction: str, game_context: dict, rules: dict) -> float:
+    team = normalize_team_key(candidate.get("team", ""))
+    opponent = normalize_team_key(candidate.get("opponent", ""))
+    market = normalize_market(candidate.get("market"))
+    ctx = game_context.get(f"{team}::{opponent}", {})
+    if not ctx:
+        return 0.0
+
+    total = safe_float(ctx.get("consensus_total"), 0.0)
+    spread = safe_float(ctx.get("team_spread"), math.nan)
+
+    bias_step = clamp(safe_float(rules.get("prop_context_bias_step", 0.02), 0.02), 0.0, 0.05)
+    max_bias = clamp(safe_float(rules.get("prop_context_max_bias", 0.05), 0.05), 0.0, 0.10)
+    total_over_th = safe_float(rules.get("prop_context_total_over_threshold", 233.0), 233.0)
+    total_under_th = safe_float(rules.get("prop_context_total_under_threshold", 220.0), 220.0)
+    favorite_spread_th = safe_float(rules.get("prop_context_favorite_spread_threshold", 6.5), 6.5)
+
+    scoring_markets = {"PTS", "AST", "3PM"}
+    market_weight = 1.0 if market in scoring_markets else 0.5
+
+    bias = 0.0
+    if total >= total_over_th:
+        bias += bias_step if str(direction).upper() == "OVER" else -bias_step
+    elif total > 0 and total <= total_under_th:
+        bias += bias_step if str(direction).upper() == "UNDER" else -bias_step
+
+    if not math.isnan(spread):
+        if spread <= -favorite_spread_th:
+            bias += (bias_step * market_weight) if str(direction).upper() == "OVER" else -(bias_step * market_weight)
+        elif spread >= favorite_spread_th:
+            underdog_weight = 0.5 * market_weight
+            bias += (bias_step * underdog_weight) if str(direction).upper() == "UNDER" else -(bias_step * underdog_weight)
+
+    return clamp(bias, -max_bias, max_bias)
+
+
 def _prop_history_values(prop: dict, h2h_lookup: dict) -> List[float]:
     direct = (
         prop.get("last5_vs_opp")
@@ -1898,6 +2027,7 @@ def build_player_prop_parlay(
     rules: dict,
     learning_state: Optional[dict] = None,
     dfs_projection_map: Optional[dict] = None,
+    odds_data: Optional[dict] = None,
 ) -> dict:
     if not wagering_enabled(rules):
         return {"legs": [], "total_odds": 0, "note": "NO_PROP_PARLAY: wagering disabled"}
@@ -1906,6 +2036,7 @@ def build_player_prop_parlay(
 
     state = learning_state or load_learning_state()
     projection_map = dfs_projection_map or {}
+    game_context = build_prop_game_context(odds_data or {})
     min_line_edge = safe_float(rules.get("prop_min_line_edge", 0.35), 0.35)
     min_model_edge = safe_float(rules.get("prop_min_model_edge_pct", 0.03), 0.03)
     market_prior_weight = clamp(safe_float(rules.get("prop_market_prior_weight", 0.25), 0.25), 0.0, 0.6)
@@ -1938,6 +2069,8 @@ def build_player_prop_parlay(
         line_signal = clamp(abs(line_edge) * 0.05, 0.0, 0.12)
         blended_rate = ((1.0 - market_prior_weight) * success_rate) + (market_prior_weight * prior_rate)
         model_prob = clamp(blended_rate + trend_signal + line_signal, 0.05, 0.92)
+        context_bias = prop_game_context_bias(candidate, direction, game_context, rules)
+        model_prob = clamp(model_prob + context_bias, 0.05, 0.92)
         edge_prob = model_prob - implied
         if edge_prob < min_model_edge:
             continue
@@ -1948,6 +2081,8 @@ def build_player_prop_parlay(
 
         safe_call = math.floor(safe_projection) if direction == "OVER" else math.ceil(safe_projection)
         safe_call = max(safe_call, 0)
+        context_key = f"{normalize_team_key(candidate.get('team', ''))}::{normalize_team_key(candidate.get('opponent', ''))}"
+        context_row = game_context.get(context_key, {})
         scored.append(
             {
                 "player": candidate["player"],
@@ -1976,6 +2111,9 @@ def build_player_prop_parlay(
                 "game": candidate["game"],
                 "history_source": str(candidate.get("history_source", "")),
                 "history_noise_removed": int(safe_float(candidate.get("history_noise_removed", 0), 0)),
+                "context_bias": round(context_bias, 4),
+                "context_total": round(safe_float(context_row.get("consensus_total"), 0.0), 3),
+                "context_spread": round(safe_float(context_row.get("team_spread"), 0.0), 3),
             }
         )
 
@@ -2160,7 +2298,8 @@ Season: {season}
             report += (
                 f"   last5={leg['last5']} avg={leg['last5_avg']} trend={leg['trend']} "
                 f"haircut={leg['haircut_pct']}% history={leg.get('history_source', 'n/a')} "
-                f"noise_removed={leg.get('history_noise_removed', 0)}\n"
+                f"noise_removed={leg.get('history_noise_removed', 0)} "
+                f"context(total={leg.get('context_total', 0)}, spread={leg.get('context_spread', 0)}, bias={leg.get('context_bias', 0)})\n"
             )
     else:
         report += "- NO_PROP_PARLAY\n"
@@ -2335,6 +2474,7 @@ def main() -> None:
         rules,
         learning_state=learning_state,
         dfs_projection_map=lineup.get("projection_map", {}),
+        odds_data=odds_for_wagering,
     )
     learning_summary = build_learning_summary(learning_state)
 

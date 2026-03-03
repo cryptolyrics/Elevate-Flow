@@ -16,5 +16,10 @@
   "prop_min_model_edge_pct": 0.02,
   "prop_max_legs": 3,
   "prop_trend_weight": 0.35,
-  "prop_market_prior_weight": 0.25
+  "prop_market_prior_weight": 0.25,
+  "prop_context_bias_step": 0.02,
+  "prop_context_max_bias": 0.05,
+  "prop_context_total_over_threshold": 233.0,
+  "prop_context_total_under_threshold": 220.0,
+  "prop_context_favorite_spread_threshold": 6.5
 }
