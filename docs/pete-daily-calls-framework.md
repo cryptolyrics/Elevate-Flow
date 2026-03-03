@@ -216,6 +216,8 @@ python3 pete-nba-pipeline.py \
 
 ## Notes
 - Market feed is Tank01-first in `pete-nba-pipeline.py`; API-Sports is fallback-only.
+- Prop H2H now prioritizes player-vs-opponent history (not just player recent form).
+- Local history removes low-minute outliers before building `last5` to reduce injury-noise skew.
 - Wagering remains fail-closed unless both are set:
   - `PETE_ENABLE_WAGERING=1`
   - quant rules file has `"enabled": true`

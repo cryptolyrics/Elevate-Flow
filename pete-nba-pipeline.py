@@ -22,6 +22,7 @@ import csv
 import json
 import math
 import os
+import statistics
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set, Tuple
@@ -1476,23 +1477,116 @@ def _seed_history_from_line(line: float, samples: int = 5) -> List[float]:
     return seeded[:samples]
 
 
+def _history_value_entry(raw) -> Optional[dict]:
+    if isinstance(raw, dict):
+        value = math.nan
+        for key in ["value", "stat", "points", "rebounds", "assists", "steals", "three_pm"]:
+            if key not in raw:
+                continue
+            value = safe_float(raw.get(key), math.nan)
+            if not math.isnan(value):
+                break
+        if math.isnan(value):
+            return None
+        minutes = safe_float(raw.get("minutes"), math.nan)
+        game_date = str(raw.get("game_date", "")).strip()
+        return {"value": value, "minutes": minutes, "game_date": game_date}
+
+    value = safe_float(raw, math.nan)
+    if math.isnan(value):
+        return None
+    return {"value": value, "minutes": math.nan, "game_date": ""}
+
+
+def _normalize_history_entries(values: List) -> List[dict]:
+    entries: List[dict] = []
+    for raw in values if isinstance(values, list) else []:
+        entry = _history_value_entry(raw)
+        if entry is None:
+            continue
+        entries.append(entry)
+
+    # Sort newest-first when we have game dates.
+    with_dates = [e for e in entries if e.get("game_date")]
+    if len(with_dates) >= 2:
+        entries.sort(key=lambda e: e.get("game_date", ""), reverse=True)
+    return entries
+
+
+def _filter_injury_noise(entries: List[dict], min_abs_minutes: float = 12.0, min_ratio_median: float = 0.55) -> Tuple[List[dict], dict]:
+    if not entries:
+        return [], {"removed": 0, "minutes_floor": 0.0}
+
+    minutes = [safe_float(row.get("minutes"), math.nan) for row in entries]
+    minutes = [m for m in minutes if not math.isnan(m) and m > 0.0]
+    if not minutes:
+        return entries, {"removed": 0, "minutes_floor": 0.0}
+
+    median_minutes = float(statistics.median(minutes))
+    minutes_floor = max(float(min_abs_minutes), median_minutes * float(min_ratio_median))
+    filtered = [
+        row for row in entries if math.isnan(safe_float(row.get("minutes"), math.nan)) or safe_float(row.get("minutes"), 0.0) >= minutes_floor
+    ]
+    removed = max(0, len(entries) - len(filtered))
+    if not filtered:
+        return entries, {"removed": 0, "minutes_floor": round(minutes_floor, 2)}
+    return filtered, {"removed": removed, "minutes_floor": round(minutes_floor, 2)}
+
+
+def _finalize_history_window(values: List, target_size: int = 5) -> Tuple[List[float], dict]:
+    entries = _normalize_history_entries(values)
+    filtered, meta = _filter_injury_noise(entries)
+    window = filtered[: max(1, target_size)]
+
+    # If filtering got too aggressive, backfill from original samples.
+    if len(window) < target_size and entries:
+        seen = {(row.get("game_date", ""), row.get("value")) for row in window}
+        for row in entries:
+            key = (row.get("game_date", ""), row.get("value"))
+            if key in seen:
+                continue
+            window.append(row)
+            seen.add(key)
+            if len(window) >= target_size:
+                break
+
+    return [float(row.get("value")) for row in window[:target_size]], meta
+
+
 def _collect_local_recent_market_history(data_root: str, max_games: int = 5) -> dict:
     root = Path(data_root)
-    lookup: Dict[str, List[Tuple[str, float]]] = {}
+    lookup: Dict[str, List[dict]] = {}
     pattern = "nba/season=*/processed/player_boxscore_jsonl/*.jsonl"
     for file_path in root.glob(pattern):
         try:
+            parsed_rows = []
             for line in file_path.read_text(encoding="utf-8").splitlines():
                 if not line.strip():
                     continue
                 row = json.loads(line)
                 if not isinstance(row, dict):
                     continue
+                parsed_rows.append(row)
+
+            teams_in_game = sorted(
+                {
+                    normalize_team_key(normalize_team_code(row.get("team", "")))
+                    for row in parsed_rows
+                    if normalize_team_key(normalize_team_code(row.get("team", "")))
+                }
+            )
+            opponent_by_team = {}
+            if len(teams_in_game) == 2:
+                opponent_by_team = {teams_in_game[0]: teams_in_game[1], teams_in_game[1]: teams_in_game[0]}
+
+            for row in parsed_rows:
                 name = str(row.get("player_name", "")).strip().lower()
                 team = normalize_team_key(normalize_team_code(row.get("team", "")))
+                opponent = opponent_by_team.get(team, "")
                 game_date = str(row.get("game_date", "")).strip()
                 if not name or not team or not game_date:
                     continue
+                minutes = safe_float(row.get("minutes"), math.nan)
                 values = {
                     "PTS": safe_float(row.get("points"), math.nan),
                     "REB": safe_float(row.get("rebounds"), math.nan),
@@ -1503,15 +1597,19 @@ def _collect_local_recent_market_history(data_root: str, max_games: int = 5) -> 
                 for market, value in values.items():
                     if math.isnan(value):
                         continue
+                    entry = {"game_date": game_date, "value": float(value), "minutes": minutes}
                     key = f"{name}::{team}::{market}"
-                    lookup.setdefault(key, []).append((game_date, value))
+                    lookup.setdefault(key, []).append(entry)
+                    if opponent:
+                        opp_key = f"{name}::{team}::{opponent}::{market}"
+                        lookup.setdefault(opp_key, []).append(entry)
         except Exception:
             continue
 
     compact = {}
     for key, rows in lookup.items():
-        rows.sort(key=lambda item: item[0], reverse=True)
-        compact[key] = [value for _, value in rows[:max_games]]
+        rows.sort(key=lambda item: item.get("game_date", ""), reverse=True)
+        compact[key] = rows[: max(max_games, 10)]
     return compact
 
 
@@ -1645,6 +1743,7 @@ def load_tank01_prop_candidates(
     local_history = _collect_local_recent_market_history(data_root)
     candidates: List[dict] = []
     synthetic_history_candidates = 0
+    history_noise_removed_total = 0
     for game in games:
         if not isinstance(game, dict):
             continue
@@ -1684,10 +1783,18 @@ def load_tank01_prop_candidates(
                     h2h_lookup,
                 )
                 if len(history) < 5:
+                    local_h2h_key = f"{player.lower()}::{normalize_team_key(team)}::{normalize_team_key(opponent)}::{market}"
+                    history = local_history.get(local_h2h_key, [])
+                    if len(history) >= 5:
+                        history_source = "local_h2h"
+                if len(history) < 5:
                     local_key = f"{player.lower()}::{normalize_team_key(team)}::{market}"
                     history = local_history.get(local_key, [])
                     if len(history) >= 5:
                         history_source = "local_recent"
+
+                history, history_meta = _finalize_history_window(history, target_size=5)
+                history_noise_removed_total += int(history_meta.get("removed", 0))
                 if len(history) < 5:
                     history = _seed_history_from_line(line, samples=5)
                     history_source = "synthetic_line"
@@ -1709,6 +1816,8 @@ def load_tank01_prop_candidates(
                         "game": f"{away} @ {home}",
                         "source": "tank01",
                         "history_source": history_source,
+                        "history_noise_removed": int(history_meta.get("removed", 0)),
+                        "history_minutes_floor": float(history_meta.get("minutes_floor", 0.0)),
                         "player_id": player_id,
                     }
                 )
@@ -1719,6 +1828,7 @@ def load_tank01_prop_candidates(
         "candidates": len(candidates),
         "players_mapped": len(by_id),
         "synthetic_history_candidates": synthetic_history_candidates,
+        "history_noise_removed_total": history_noise_removed_total,
     }
 
 
@@ -1864,6 +1974,8 @@ def build_player_prop_parlay(
                 "learned_adj": round(model["learned_adj"], 3),
                 "learned_opp_adj": round(model["learned_opp_adj"], 3),
                 "game": candidate["game"],
+                "history_source": str(candidate.get("history_source", "")),
+                "history_noise_removed": int(safe_float(candidate.get("history_noise_removed", 0), 0)),
             }
         )
 
@@ -2047,7 +2159,8 @@ Season: {season}
             )
             report += (
                 f"   last5={leg['last5']} avg={leg['last5_avg']} trend={leg['trend']} "
-                f"haircut={leg['haircut_pct']}%\n"
+                f"haircut={leg['haircut_pct']}% history={leg.get('history_source', 'n/a')} "
+                f"noise_removed={leg.get('history_noise_removed', 0)}\n"
             )
     else:
         report += "- NO_PROP_PARLAY\n"
@@ -2252,6 +2365,7 @@ def main() -> None:
         f"- Prop lag days: {tank01_prop_meta.get('source_lag_days', -1)}\n"
         f"- Prop candidates merged: {len(prop_candidates)}\n"
         f"- Prop candidates (synthetic history): {tank01_prop_meta.get('synthetic_history_candidates', 0)}\n"
+        f"- Prop history noise removed: {tank01_prop_meta.get('history_noise_removed_total', 0)}\n"
     )
 
     if args.dry_run:

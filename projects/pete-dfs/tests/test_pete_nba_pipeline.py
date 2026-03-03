@@ -351,6 +351,80 @@ class PetePipelineTests(unittest.TestCase):
             self.assertEqual(first.get("history_source"), "synthetic_line")
             self.assertEqual(len(first.get("last5", [])), 5)
 
+    def test_load_tank01_prop_candidates_prefers_local_opponent_h2h_and_filters_low_minutes(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = pathlib.Path(tmpdir)
+            props_dir = root / "nba" / "betting-props"
+            players_dir = root / "nba" / "players"
+            boxscore_dir = root / "nba" / "season=2025-26" / "processed" / "player_boxscore_jsonl"
+            props_dir.mkdir(parents=True, exist_ok=True)
+            players_dir.mkdir(parents=True, exist_ok=True)
+            boxscore_dir.mkdir(parents=True, exist_ok=True)
+
+            sample_props = json.loads((FIXTURES / "sample_tank01_props.json").read_text())
+            sample_players = json.loads((FIXTURES / "sample_tank01_players.json").read_text())
+            (props_dir / "2026-03-02.json").write_text(json.dumps(sample_props), encoding="utf-8")
+            (players_dir / "2026-03-02.json").write_text(json.dumps(sample_players), encoding="utf-8")
+
+            # 6 BOS vs MIL games for Jaylen Brown PTS; one low-minute game should be filtered as injury-noise.
+            game_rows = [
+                ("g1", "2026-02-28", 34.0, 27.0),
+                ("g2", "2026-02-24", 36.0, 29.0),
+                ("g3", "2026-02-20", 35.0, 31.0),
+                ("g4", "2026-02-15", 33.0, 26.0),
+                ("g5", "2026-02-10", 32.0, 28.0),
+                ("g6", "2026-02-05", 6.0, 2.0),
+            ]
+            for gid, game_date, minutes, points in game_rows:
+                rows = [
+                    {
+                        "game_id": gid,
+                        "game_date": game_date,
+                        "team": "BOS",
+                        "player_name": "Jaylen Brown",
+                        "minutes": minutes,
+                        "points": points,
+                        "rebounds": 6,
+                        "assists": 4,
+                        "steals": 1,
+                        "three_pm": 3,
+                    },
+                    {
+                        "game_id": gid,
+                        "game_date": game_date,
+                        "team": "MIL",
+                        "player_name": "Giannis Antetokounmpo",
+                        "minutes": 36.0,
+                        "points": 30,
+                        "rebounds": 10,
+                        "assists": 6,
+                        "steals": 1,
+                        "three_pm": 1,
+                    },
+                ]
+                (boxscore_dir / f"{gid}.jsonl").write_text(
+                    "\n".join(json.dumps(row) for row in rows) + "\n",
+                    encoding="utf-8",
+                )
+
+            candidates, meta = self.module.load_tank01_prop_candidates(
+                "2026-03-03",
+                str(root),
+                h2h_json_path="",
+                max_lag_days=2,
+                default_odds=1.9,
+            )
+            target = next(
+                (row for row in candidates if row.get("player") == "Jaylen Brown" and row.get("market") == "PTS"),
+                None,
+            )
+            self.assertIsNotNone(target)
+            self.assertEqual(target.get("history_source"), "local_h2h")
+            self.assertEqual(len(target.get("last5", [])), 5)
+            self.assertGreater(target.get("history_noise_removed", 0), 0)
+            self.assertGreater(meta.get("history_noise_removed_total", 0), 0)
+            self.assertGreater(min(target.get("last5", [0])), 5.0)
+
 
 if __name__ == "__main__":
     unittest.main()

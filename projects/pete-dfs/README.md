@@ -37,6 +37,9 @@ Hard risk filters for wagering:
 - Bet of the Day: uses Tank01 moneyline odds as primary feed
 - Parlay of the Day: ingests Tank01 player props (+ players mapping) into prop candidate engine
 - Date-lag fallback for AU runs via `--tank01-max-lag-days`
+- Prop history quality guards:
+  - prioritize player-vs-opponent local history when available
+  - filter low-minute historical outliers to reduce injury-noise distortion
 
 `scripts/PeteDFS_engine.py` now emits Mission Control JSON output by default:
 - `OPENCLAW_WORKSPACE/logs/Pete/<YYYY-MM-DD>-pete-dfs.json`
