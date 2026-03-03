@@ -7,7 +7,6 @@ This document is the operating source of truth for mission targets, active agent
 - This file governs mission target, active roster, phase priorities, and execution flow.
 - `docs/canon/*` governs framework contracts, security rules, and non-negotiable operating constraints.
 - If wording conflicts, canon non-negotiables win and JJ updates this file to restore consistency.
-- Hard execution constraint: Elevate Flow agents do not have local drive access on Jax machines; use Git/API only.
 
 ## Mission
 Reach **$3,000 USD/month** net profit by **June 2026** through focused validation, rapid product delivery, and disciplined growth loops.

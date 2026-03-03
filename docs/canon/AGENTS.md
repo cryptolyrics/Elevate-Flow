@@ -33,8 +33,6 @@ Mission and active operating priorities are defined in `ELEVATE-MISSION-CONTROL.
 8. Services bind to `127.0.0.1`.
 9. Protected endpoints require `X-MC-KEY`.
 10. No secrets in commits, logs, or packets.
-11. Elevate Flow agents have no access to local drives on Jax machines.
-12. Agent handoffs must use Git/API/message payloads only (no local-path assumptions).
 
 ## Canonical Workspace Model
 

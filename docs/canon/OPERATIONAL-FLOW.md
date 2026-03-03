@@ -19,7 +19,6 @@
 
 5. Review
 - Update registry and tasks via Git commits.
-- Confirm all agent instructions are Git/API based and contain no local-drive path dependencies.
 
 ## Incident Flow
 
@@ -27,4 +26,3 @@
 2. Triage root cause.
 3. Patch in Git.
 4. Re-run and verify normalization.
-5. If blocked by missing file access, publish artifacts to Git/API and retry.

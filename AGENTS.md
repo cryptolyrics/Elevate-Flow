@@ -17,11 +17,6 @@ factory frameworks.
 Outcomes saved to /logs and /decisions.
 8. If it’s not written, it didn’t happen.
 
-## Hard Platform Constraint
-- Elevate Flow agents do **not** have access to local drives on Jax machines.
-- Do not assume local file paths are available to agents.
-- Use Git, API endpoints, or explicit message payloads for all agent handoff data.
-
 ## Agents + Ownership
 - JJ (COO): routing, cadence, reporting, logging enforcement
 - Vlad (Dev): code, automation, infra, deployments, cost controls
