@@ -292,6 +292,66 @@ class PetePipelineTests(unittest.TestCase):
         players = [row.get("player") for row in parlay.get("legs", [])]
         self.assertEqual(len(players), len(set(players)))
 
+    def test_prop_haircut_scales_edge_without_direction_flip(self):
+        rules = {
+            "prop_call_haircut_pct": 0.25,
+            "prop_trend_weight": 0.35,
+        }
+        over_candidate = {
+            "player": "Over Player",
+            "opponent": "BBB",
+            "market": "PTS",
+            "last5": [30, 31, 32, 33, 34],
+        }
+        under_candidate = {
+            "player": "Under Player",
+            "opponent": "DDD",
+            "market": "PTS",
+            "last5": [18, 19, 20, 20, 21],
+        }
+
+        over_model = self.module._prop_projection(over_candidate, rules, {"player_prop_adjustments": {}, "player_prop_opp_adjustments": {}}, {})
+        under_model = self.module._prop_projection(under_candidate, rules, {"player_prop_adjustments": {}, "player_prop_opp_adjustments": {}}, {})
+
+        over_line = 29.5
+        over_raw_edge = over_model["projected"] - over_line
+        over_safe_edge = over_raw_edge * (1.0 - over_model["haircut_pct"])
+        self.assertGreater(over_raw_edge, 0.0)
+        self.assertGreater(over_safe_edge, 0.0)
+
+        under_line = 24.5
+        under_raw_edge = under_model["projected"] - under_line
+        under_safe_edge = under_raw_edge * (1.0 - under_model["haircut_pct"])
+        self.assertLess(under_raw_edge, 0.0)
+        self.assertLess(under_safe_edge, 0.0)
+
+    def test_build_player_prop_parlay_can_select_over_when_projection_is_above_line(self):
+        os.environ["PETE_ENABLE_WAGERING"] = "1"
+        candidates = [
+            {
+                "player": "Balanced Over",
+                "team": "DEN",
+                "opponent": "UTA",
+                "market": "PTS",
+                "line": 30.0,
+                "odds_over": 1.9,
+                "odds_under": 1.9,
+                "last5": [31, 31, 32, 30, 32],
+                "game": "DEN @ UTA",
+            }
+        ]
+        rules = {
+            "enabled": True,
+            "prop_call_haircut_pct": 0.20,
+            "prop_min_line_edge": 0.20,
+            "prop_min_model_edge_pct": 0.01,
+            "prop_max_legs": 1,
+            "prop_trend_weight": 0.35,
+        }
+        parlay = self.module.build_player_prop_parlay(candidates, rules, learning_state={"player_prop_adjustments": {}, "player_prop_opp_adjustments": {}}, dfs_projection_map={})
+        self.assertEqual(len(parlay.get("legs", [])), 1)
+        self.assertEqual(parlay["legs"][0]["direction"], "OVER")
+
     def test_load_espn_major_out_teams_from_fixture(self):
         teams = self.module.load_espn_major_out_teams(str(FIXTURES / "sample_espn_injuries.json"))
         self.assertIn("lal", teams)

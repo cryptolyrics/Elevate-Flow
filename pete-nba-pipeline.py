@@ -2096,7 +2096,6 @@ def _prop_projection(candidate: dict, rules: dict, learning_state: dict, dfs_pro
     projected = avg_last5 + (trend * trend_weight) + learned + learned_opp + dfs_bonus
 
     haircut = clamp(safe_float(rules.get("prop_call_haircut_pct", 0.10), 0.10), 0.10, 0.35)
-    safe_projection = projected * (1.0 - haircut)
 
     return {
         "avg_last5": avg_last5,
@@ -2105,7 +2104,6 @@ def _prop_projection(candidate: dict, rules: dict, learning_state: dict, dfs_pro
         "learned_opp_adj": learned_opp,
         "dfs_bonus": dfs_bonus,
         "projected": projected,
-        "safe_projection": safe_projection,
         "haircut_pct": haircut,
     }
 
@@ -2132,9 +2130,12 @@ def build_player_prop_parlay(
     scored = []
     for candidate in prop_candidates:
         model = _prop_projection(candidate, rules, state, projection_map)
-        safe_projection = model["safe_projection"]
         line = safe_float(candidate.get("line"), 0.0)
-        line_edge = safe_projection - line
+        # Apply safety haircut to edge from line (not absolute projection),
+        # so we reduce confidence without biasing toward UNDER by default.
+        raw_edge = model["projected"] - line
+        line_edge = raw_edge * (1.0 - model["haircut_pct"])
+        safe_projection = line + line_edge
         if abs(line_edge) < min_line_edge:
             continue
 
