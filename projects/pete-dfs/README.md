@@ -15,7 +15,7 @@ Enable wagering only when both are true:
 
 Current live baseline in `quant_rules.json`:
 - `min_edge_pct: 0.03`
-- `min_edge_dollars_per_1u: 0.12`
+- `min_edge_dollars_per_1u: 0.30`
 - `prop_min_line_edge: 0.20`
 - `prop_min_model_edge_pct: 0.02`
 

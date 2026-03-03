@@ -2,7 +2,7 @@
   "enabled": true,
   "min_edge_pct": 0.03,
   "min_model_prob": 0.52,
-  "min_edge_dollars_per_1u": 0.12,
+  "min_edge_dollars_per_1u": 0.3,
   "home_team_model_boost_pct": 0.1,
   "max_single_bet_decimal_odds": 3.0,
   "max_parlay_legs": 3,
