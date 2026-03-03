@@ -21,6 +21,10 @@ Current live baseline in `quant_rules.json`:
 - `parlay_min_legs: 2`
 - `prop_min_line_edge: 0.20`
 - `prop_min_model_edge_pct: 0.02`
+- `prop_min_success_rate: 0.55`
+- `prop_min_abs_trend: 0.10`
+- `prop_relaxed_line_edge_scale: 0.60`
+- `prop_relaxed_model_edge_scale: 0.60`
 
 Hard risk filters for wagering:
 - home-team model boost configured in quant rules
@@ -42,6 +46,12 @@ Hard risk filters for wagering:
   - prioritize player-vs-opponent local history when available
   - filter low-minute historical outliers to reduce injury-noise distortion
   - apply spread/total context bias so heavy-favorite high-total games don't default to weak UNDERS
+  - fallback to relaxed prop gates when strict gates yield zero candidates (still edge/EV gated)
+
+Learning updates:
+- If `pandas` is available, feedback updates are aggregated by player/team/market for more stable learning.
+- Fallback is pure-Python updates when pandas is unavailable.
+- Optional switch to force fallback: `PETE_DISABLE_PANDAS_LEARNING=1`
 
 `scripts/PeteDFS_engine.py` now emits Mission Control JSON output by default:
 - `OPENCLAW_WORKSPACE/logs/Pete/<YYYY-MM-DD>-pete-dfs.json`

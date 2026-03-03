@@ -29,12 +29,17 @@ class PetePipelineTests(unittest.TestCase):
 
     def setUp(self):
         self._prev_enable = os.environ.get("PETE_ENABLE_WAGERING")
+        self._prev_disable_pandas = os.environ.get("PETE_DISABLE_PANDAS_LEARNING")
 
     def tearDown(self):
         if self._prev_enable is None:
             os.environ.pop("PETE_ENABLE_WAGERING", None)
         else:
             os.environ["PETE_ENABLE_WAGERING"] = self._prev_enable
+        if self._prev_disable_pandas is None:
+            os.environ.pop("PETE_DISABLE_PANDAS_LEARNING", None)
+        else:
+            os.environ["PETE_DISABLE_PANDAS_LEARNING"] = self._prev_disable_pandas
 
     def test_decimal_to_aus_conversion(self):
         self.assertEqual(self.module.decimal_to_aus(2.25), "+125")
@@ -388,6 +393,37 @@ class PetePipelineTests(unittest.TestCase):
     def test_load_espn_major_out_teams_from_fixture(self):
         teams = self.module.load_espn_major_out_teams(str(FIXTURES / "sample_espn_injuries.json"))
         self.assertIn("lal", teams)
+
+    def test_update_learning_state_sets_python_backend_when_pandas_disabled(self):
+        payload = {
+            "dfs": [{"player": "Tester A", "projected_fp": 30, "actual_fp": 34}],
+            "bets": [{"team": "Lakers", "model_prob": 0.60, "won": False}],
+            "props": [{"player": "Tester B", "market": "PTS", "projected": 24, "actual": 27, "direction": "OVER", "line": 25.5}],
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            feedback_path = pathlib.Path(tmpdir) / "feedback.json"
+            feedback_path.write_text(json.dumps(payload), encoding="utf-8")
+            os.environ["PETE_DISABLE_PANDAS_LEARNING"] = "1"
+            state = self.module.update_learning_state_from_feedback({}, str(feedback_path))
+        self.assertEqual(state.get("meta", {}).get("learning_backend"), "python")
+        self.assertEqual(state.get("meta", {}).get("dfs_samples"), 1)
+        self.assertEqual(state.get("meta", {}).get("bet_samples"), 1)
+        self.assertEqual(state.get("meta", {}).get("prop_samples"), 1)
+
+    def test_update_learning_state_sets_pandas_backend_when_available(self):
+        if getattr(self.module, "pd", None) is None:
+            self.skipTest("pandas not available in this environment")
+        payload = {
+            "dfs": [{"player": "Tester A", "projected_fp": 30, "actual_fp": 34}],
+            "bets": [{"team": "Lakers", "model_prob": 0.60, "won": False}],
+            "props": [{"player": "Tester B", "market": "PTS", "projected": 24, "actual": 27, "direction": "OVER", "line": 25.5}],
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            feedback_path = pathlib.Path(tmpdir) / "feedback.json"
+            feedback_path.write_text(json.dumps(payload), encoding="utf-8")
+            os.environ.pop("PETE_DISABLE_PANDAS_LEARNING", None)
+            state = self.module.update_learning_state_from_feedback({}, str(feedback_path))
+        self.assertEqual(state.get("meta", {}).get("learning_backend"), "pandas")
 
     def test_load_tank01_odds_and_merge(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -123,12 +123,18 @@ Example optional `--h2h-json` payload:
 - File-backed JSON state:
   - `player_adjustments`
   - `team_adjustments`
+  - `player_prop_adjustments`
+  - `player_prop_opp_adjustments`
+  - `prop_market_stats`
   - `meta` sample counters
 
 ## Feedback Loop
 - Optional feedback JSON updates model:
   - DFS samples adjust player projections
   - Bet samples adjust team calibration
+  - Prop samples adjust player+opponent market deltas and market win-rate priors
+- If `pandas` is installed, feedback is aggregated before updates for less noisy learning.
+- Set `PETE_DISABLE_PANDAS_LEARNING=1` to force pure-Python fallback.
 - State is persisted each run for incremental improvement.
 
 ## Runtime Commands

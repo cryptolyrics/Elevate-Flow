@@ -28,6 +28,10 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 import requests
+try:
+    import pandas as pd
+except Exception:  # pragma: no cover - optional dependency
+    pd = None
 
 WORKSPACE = Path(os.environ.get("OPENCLAW_WORKSPACE", str(Path.cwd() / ".pete-workspace")))
 LOG_DIR = WORKSPACE / "logs" / "Pete"
@@ -864,6 +868,183 @@ def save_learning_state(state: dict) -> None:
     path.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 
+def _coerce_boolish(value) -> Optional[bool]:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        if value == 1:
+            return True
+        if value == 0:
+            return False
+    token = str(value).strip().lower()
+    if token in {"1", "true", "t", "yes", "y", "won", "win"}:
+        return True
+    if token in {"0", "false", "f", "no", "n", "lost", "loss"}:
+        return False
+    return None
+
+
+def _scaled_weight(samples: int, max_weight: float = 1.5) -> float:
+    count = max(1, int(samples))
+    return clamp(1.0 + (0.10 * (count - 1)), 1.0, max_weight)
+
+
+def _update_learning_state_from_feedback_pandas(
+    state: dict,
+    payload: dict,
+    feedback_path: Optional[str],
+) -> dict:
+    player_adj = state.setdefault("player_adjustments", {})
+    team_adj = state.setdefault("team_adjustments", {})
+    prop_adj = state.setdefault("player_prop_adjustments", {})
+    prop_opp_adj = state.setdefault("player_prop_opp_adjustments", {})
+    market_stats = _coerce_market_stats(state.get("prop_market_stats"))
+    state["prop_market_stats"] = market_stats
+    meta = state.setdefault("meta", {})
+
+    learning_rate_dfs = 0.08
+    learning_rate_bet = 0.06
+    learning_rate_prop = 0.08
+
+    dfs_samples = payload.get("dfs", []) if isinstance(payload, dict) else []
+    if isinstance(dfs_samples, list) and dfs_samples:
+        dfs_df = pd.DataFrame([row for row in dfs_samples if isinstance(row, dict)])
+        if not dfs_df.empty and {"player", "projected_fp", "actual_fp"}.issubset(dfs_df.columns):
+            dfs_df["player"] = dfs_df["player"].astype(str).str.strip()
+            dfs_df = dfs_df[dfs_df["player"] != ""].copy()
+            dfs_df["projected_fp"] = pd.to_numeric(dfs_df["projected_fp"], errors="coerce")
+            dfs_df["actual_fp"] = pd.to_numeric(dfs_df["actual_fp"], errors="coerce")
+            dfs_df = dfs_df.dropna(subset=["projected_fp", "actual_fp"]).copy()
+            if not dfs_df.empty:
+                dfs_df["error"] = dfs_df["actual_fp"] - dfs_df["projected_fp"]
+                grouped = dfs_df.groupby("player", as_index=False).agg(
+                    error_mean=("error", "mean"),
+                    n=("error", "size"),
+                )
+                for row in grouped.itertuples(index=False):
+                    player = str(row.player).strip()
+                    current = safe_float(player_adj.get(player, 0.0), 0.0)
+                    delta = learning_rate_dfs * safe_float(row.error_mean, 0.0) * _scaled_weight(int(row.n))
+                    player_adj[player] = round(clamp(current + delta, -8.0, 8.0), 4)
+                meta["dfs_samples"] = int(meta.get("dfs_samples", 0)) + int(len(dfs_df.index))
+
+    bet_samples = payload.get("bets", []) if isinstance(payload, dict) else []
+    if isinstance(bet_samples, list) and bet_samples:
+        bet_df = pd.DataFrame([row for row in bet_samples if isinstance(row, dict)])
+        if not bet_df.empty and {"team", "model_prob", "won"}.issubset(bet_df.columns):
+            bet_df["team_key"] = bet_df["team"].astype(str).str.strip().map(normalize_team_key)
+            bet_df = bet_df[bet_df["team_key"] != ""].copy()
+            bet_df["model_prob"] = pd.to_numeric(bet_df["model_prob"], errors="coerce")
+            bet_df["won_float"] = bet_df["won"].map(
+                lambda v: 1.0 if _coerce_boolish(v) is True else (0.0 if _coerce_boolish(v) is False else math.nan)
+            )
+            bet_df = bet_df.dropna(subset=["model_prob", "won_float"]).copy()
+            if not bet_df.empty:
+                bet_df["model_prob"] = bet_df["model_prob"].clip(lower=0.01, upper=0.99)
+                bet_df["calibration_error"] = bet_df["won_float"] - bet_df["model_prob"]
+                grouped = bet_df.groupby("team_key", as_index=False).agg(
+                    error_mean=("calibration_error", "mean"),
+                    n=("calibration_error", "size"),
+                )
+                for row in grouped.itertuples(index=False):
+                    team_key = str(row.team_key).strip()
+                    current = safe_float(team_adj.get(team_key, 0.0), 0.0)
+                    delta = learning_rate_bet * safe_float(row.error_mean, 0.0) * _scaled_weight(int(row.n), max_weight=1.4)
+                    team_adj[team_key] = round(clamp(current + delta, -0.12, 0.12), 6)
+                meta["bet_samples"] = int(meta.get("bet_samples", 0)) + int(len(bet_df.index))
+
+    prop_samples = payload.get("props", []) if isinstance(payload, dict) else []
+    if isinstance(prop_samples, list) and prop_samples:
+        prop_df = pd.DataFrame([row for row in prop_samples if isinstance(row, dict)])
+        if not prop_df.empty and {"player", "market", "projected", "actual"}.issubset(prop_df.columns):
+            prop_df["player_key"] = prop_df["player"].astype(str).str.strip().str.lower()
+            prop_df["market_norm"] = prop_df["market"].map(normalize_market)
+            prop_df["projected"] = pd.to_numeric(prop_df["projected"], errors="coerce")
+            prop_df["actual"] = pd.to_numeric(prop_df["actual"], errors="coerce")
+            prop_df["opponent_key"] = prop_df.get("opponent", "").map(normalize_team_key) if "opponent" in prop_df.columns else ""
+            prop_df = prop_df[
+                (prop_df["player_key"] != "")
+                & (prop_df["market_norm"] != "")
+            ].dropna(subset=["projected", "actual"]).copy()
+            if not prop_df.empty:
+                prop_df["error"] = prop_df["actual"] - prop_df["projected"]
+                by_market = prop_df.groupby(["player_key", "market_norm"], as_index=False).agg(
+                    error_mean=("error", "mean"),
+                    n=("error", "size"),
+                )
+                for row in by_market.itertuples(index=False):
+                    key = f"{row.player_key}::{row.market_norm}"
+                    current = safe_float(prop_adj.get(key, 0.0), 0.0)
+                    delta = learning_rate_prop * safe_float(row.error_mean, 0.0) * _scaled_weight(int(row.n))
+                    prop_adj[key] = round(clamp(current + delta, -3.0, 3.0), 4)
+
+                if "opponent_key" in prop_df.columns:
+                    by_opp = prop_df[prop_df["opponent_key"] != ""].groupby(
+                        ["player_key", "opponent_key", "market_norm"], as_index=False
+                    ).agg(error_mean=("error", "mean"), n=("error", "size"))
+                    for row in by_opp.itertuples(index=False):
+                        key = f"{row.player_key}::{row.opponent_key}::{row.market_norm}"
+                        current = safe_float(prop_opp_adj.get(key, 0.0), 0.0)
+                        delta = 0.10 * safe_float(row.error_mean, 0.0) * _scaled_weight(int(row.n))
+                        prop_opp_adj[key] = round(clamp(current + delta, -2.5, 2.5), 4)
+
+                if "direction" in prop_df.columns:
+                    prop_df["direction"] = prop_df["direction"].astype(str).str.strip().str.upper()
+                else:
+                    prop_df["direction"] = ""
+                if "line" in prop_df.columns:
+                    prop_df["line"] = pd.to_numeric(prop_df["line"], errors="coerce")
+                else:
+                    prop_df["line"] = math.nan
+                if "won" in prop_df.columns:
+                    prop_df["won_bool"] = prop_df["won"].map(_coerce_boolish)
+                else:
+                    prop_df["won_bool"] = None
+
+                # Infer outcome from actual vs line when explicit won/loss is missing.
+                mask_over = (
+                    prop_df["won_bool"].isna()
+                    & (prop_df["direction"] == "OVER")
+                    & prop_df["line"].notna()
+                )
+                mask_under = (
+                    prop_df["won_bool"].isna()
+                    & (prop_df["direction"] == "UNDER")
+                    & prop_df["line"].notna()
+                )
+                prop_df.loc[mask_over, "won_bool"] = prop_df.loc[mask_over, "actual"] > prop_df.loc[mask_over, "line"]
+                prop_df.loc[mask_under, "won_bool"] = prop_df.loc[mask_under, "actual"] < prop_df.loc[mask_under, "line"]
+
+                stats_df = prop_df[
+                    prop_df["direction"].isin(["OVER", "UNDER"]) & prop_df["won_bool"].notna()
+                ].copy()
+                if not stats_df.empty:
+                    grouped = stats_df.groupby(["market_norm", "direction", "won_bool"], as_index=False).agg(
+                        n=("market_norm", "size")
+                    )
+                    for row in grouped.itertuples(index=False):
+                        market = str(row.market_norm)
+                        direction = str(row.direction)
+                        won_value = bool(row.won_bool)
+                        stats = market_stats.setdefault(
+                            market, {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1}
+                        )
+                        if direction == "OVER":
+                            stat_key = "over_hits" if won_value else "over_misses"
+                        else:
+                            stat_key = "under_hits" if won_value else "under_misses"
+                        stats[stat_key] = int(stats.get(stat_key, 0)) + int(row.n)
+
+                meta["prop_samples"] = int(meta.get("prop_samples", 0)) + int(len(prop_df.index))
+
+    if feedback_path:
+        meta["last_feedback_file"] = str(Path(feedback_path))
+    meta["learning_backend"] = "pandas"
+    return state
+
+
 def update_learning_state_from_feedback(state: dict, feedback_path: Optional[str]) -> dict:
     if not feedback_path:
         return state
@@ -876,6 +1057,12 @@ def update_learning_state_from_feedback(state: dict, feedback_path: Optional[str
         payload = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return state
+
+    if pd is not None and os.environ.get("PETE_DISABLE_PANDAS_LEARNING", "0") != "1":
+        try:
+            return _update_learning_state_from_feedback_pandas(state, payload, feedback_path)
+        except Exception:
+            pass
 
     dfs_samples = payload.get("dfs", []) if isinstance(payload, dict) else []
     bet_samples = payload.get("bets", []) if isinstance(payload, dict) else []
@@ -966,6 +1153,7 @@ def update_learning_state_from_feedback(state: dict, feedback_path: Optional[str
 
     if feedback_path:
         meta["last_feedback_file"] = str(Path(feedback_path))
+    meta["learning_backend"] = "python"
 
     return state
 
@@ -1554,6 +1742,7 @@ def build_learning_summary(learning_state: dict) -> dict:
         "dfs_samples": int(meta.get("dfs_samples", 0)),
         "bet_samples": int(meta.get("bet_samples", 0)),
         "prop_samples": int(meta.get("prop_samples", 0)),
+        "learning_backend": str(meta.get("learning_backend", "python")),
         "last_feedback_file": str(meta.get("last_feedback_file", "")),
         "top_dfs_adjustments": [{"player": k, "adj": round(safe_float(v), 4)} for k, v in top_dfs],
         "top_prop_adjustments": [{"player_market": k, "adj": round(safe_float(v), 4)} for k, v in top_prop],
@@ -2460,6 +2649,7 @@ Season: {season}
 - DFS samples learned: {learning_summary.get('dfs_samples', 0)}
 - Bet samples learned: {learning_summary.get('bet_samples', 0)}
 - Prop samples learned: {learning_summary.get('prop_samples', 0)}
+- Learning backend: {learning_summary.get('learning_backend', 'python')}
 - Last feedback file: {learning_summary.get('last_feedback_file') or 'N/A'}
 """
 
