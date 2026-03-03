@@ -620,6 +620,9 @@ def load_quant_rules() -> dict:
         "min_edge_pct": 0.03,
         "min_model_prob": 0.52,
         "min_edge_dollars_per_1u": 0.40,
+        "parlay_min_edge_pct": 0.03,
+        "parlay_min_edge_dollars_per_1u": 0.10,
+        "parlay_min_legs": 2,
         "home_team_model_boost_pct": 0.10,
         "max_single_bet_decimal_odds": 3.0,
         "max_parlay_legs": 3,
@@ -1271,8 +1274,12 @@ def build_parlay(
         }
 
     state = learning_state or load_learning_state()
-    min_edge_pct = safe_float(rules.get("min_edge_pct", 0.03), 0.03)
-    min_edge_dollars = safe_float(rules.get("min_edge_dollars_per_1u", 0.40), 0.40)
+    min_edge_pct = safe_float(rules.get("parlay_min_edge_pct", rules.get("min_edge_pct", 0.03)), 0.03)
+    min_edge_dollars = safe_float(
+        rules.get("parlay_min_edge_dollars_per_1u", rules.get("min_edge_dollars_per_1u", 0.40)),
+        0.40,
+    )
+    min_parlay_legs = int(max(1, safe_float(rules.get("parlay_min_legs", 2), 2)))
 
     candidates = [
         c
@@ -1310,6 +1317,13 @@ def build_parlay(
     total_odds = 1.0
     for leg in legs:
         total_odds *= leg["odds"]
+
+    if len(legs) < min_parlay_legs:
+        return {
+            "legs": [],
+            "total_odds": 0,
+            "edge_notes": f"NO_PARLAY: fewer than {min_parlay_legs} eligible legs",
+        }
 
     return {
         "legs": legs,

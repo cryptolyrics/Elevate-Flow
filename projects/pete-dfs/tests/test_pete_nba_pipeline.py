@@ -125,6 +125,47 @@ class PetePipelineTests(unittest.TestCase):
         self.assertNotEqual(bet["pick"], "NO_BET")
         self.assertGreaterEqual(bet["edge_dollars_per_1u"], 0.01)
 
+    def test_team_parlay_can_be_looser_than_single_bet(self):
+        os.environ["PETE_ENABLE_WAGERING"] = "1"
+        odds_data = {
+            "games": [
+                {"home": "Lakers", "away": "Warriors", "odds": {"Lakers": 2.30, "Warriors": 1.70}},
+                {"home": "Bucks", "away": "Celtics", "odds": {"Bucks": 2.20, "Celtics": 1.75}},
+            ]
+        }
+        rules = {
+            "enabled": True,
+            "min_edge_pct": 0.03,
+            "min_model_prob": 0.52,
+            "min_edge_dollars_per_1u": 0.30,
+            "parlay_min_edge_pct": 0.03,
+            "parlay_min_edge_dollars_per_1u": 0.10,
+            "parlay_min_legs": 2,
+            "home_team_model_boost_pct": 0.10,
+            "max_single_bet_decimal_odds": 3.0,
+            "max_parlay_legs": 3,
+        }
+
+        bet = self.module.get_bet_pick(
+            {},
+            odds_data,
+            rules=rules,
+            learning_state={"team_adjustments": {}},
+            no_b2b_teams=set(),
+            major_out_teams=set(),
+        )
+        self.assertEqual(bet["pick"], "NO_BET")
+
+        parlay = self.module.build_parlay(
+            {},
+            odds_data,
+            rules,
+            learning_state={"team_adjustments": {}},
+            no_b2b_teams=set(),
+            major_out_teams=set(),
+        )
+        self.assertGreaterEqual(len(parlay["legs"]), 2)
+
     def test_load_prop_candidates_reads_last5_data(self):
         props = self.module.load_prop_candidates(str(FIXTURES / "sample_props.json"))
         self.assertGreaterEqual(len(props), 1)
