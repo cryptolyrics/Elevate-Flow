@@ -9,6 +9,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 SCRIPT_PATH = ROOT / "projects" / "pete-dfs" / "scripts" / "pete-nba-pipeline.py"
 FIXTURES = ROOT / "projects" / "pete-dfs" / "fixtures"
+MARKETS = {"PTS", "REB", "AST", "STL", "BLK", "TOV", "3PM", "PR", "PA", "RA", "PRA", "SB"}
 
 
 def load_module():
@@ -170,7 +171,7 @@ class PetePipelineTests(unittest.TestCase):
         props = self.module.load_prop_candidates(str(FIXTURES / "sample_props.json"))
         self.assertGreaterEqual(len(props), 1)
         first = props[0]
-        self.assertIn(first["market"], {"PTS", "REB", "AST", "STL", "3PM"})
+        self.assertIn(first["market"], MARKETS)
         self.assertEqual(len(first["last5"]), 5)
 
     def test_build_player_prop_parlay_applies_safety_haircut(self):
@@ -361,7 +362,7 @@ class PetePipelineTests(unittest.TestCase):
             )
             self.assertGreaterEqual(len(candidates), 1)
             first = candidates[0]
-            self.assertIn(first["market"], {"PTS", "REB", "AST", "STL", "3PM"})
+            self.assertIn(first["market"], MARKETS)
             self.assertEqual(len(first["last5"]), 5)
             self.assertEqual(meta["source_lag_days"], 1)
 
@@ -390,6 +391,8 @@ class PetePipelineTests(unittest.TestCase):
             first = candidates[0]
             self.assertEqual(first.get("history_source"), "synthetic_line")
             self.assertEqual(len(first.get("last5", [])), 5)
+            markets = {row.get("market") for row in candidates}
+            self.assertTrue({"PTS", "REB", "AST", "STL", "3PM"}.issubset(markets))
 
     def test_load_tank01_prop_candidates_prefers_local_opponent_h2h_and_filters_low_minutes(self):
         with tempfile.TemporaryDirectory() as tmpdir:

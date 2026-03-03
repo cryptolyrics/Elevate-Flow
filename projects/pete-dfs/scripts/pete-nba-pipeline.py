@@ -40,7 +40,14 @@ TANK01_MARKET_MAP = {
     "reb": "REB",
     "ast": "AST",
     "stl": "STL",
+    "blk": "BLK",
+    "turnover": "TOV",
     "threes": "3PM",
+    "ptsreb": "PR",
+    "ptsast": "PA",
+    "rebast": "RA",
+    "ptsrebast": "PRA",
+    "stlblk": "SB",
 }
 TANK01_TEAM_ALIASES = {
     "GS": "GSW",
@@ -778,7 +785,14 @@ def default_prop_market_stats() -> dict:
         "REB": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
         "AST": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
         "STL": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
+        "BLK": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
+        "TOV": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
         "3PM": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
+        "PR": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
+        "PA": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
+        "RA": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
+        "PRA": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
+        "SB": {"over_hits": 1, "over_misses": 1, "under_hits": 1, "under_misses": 1},
     }
 
 
@@ -1457,10 +1471,26 @@ def normalize_market(value) -> str:
         "ast": "AST",
         "steals": "STL",
         "stl": "STL",
+        "blocks": "BLK",
+        "blk": "BLK",
+        "turnovers": "TOV",
+        "turnover": "TOV",
+        "to": "TOV",
+        "tov": "TOV",
         "threes": "3PM",
         "3ptm": "3PM",
         "3pm": "3PM",
         "threepointersmade": "3PM",
+        "ptsreb": "PR",
+        "pr": "PR",
+        "ptsast": "PA",
+        "pa": "PA",
+        "rebast": "RA",
+        "ra": "RA",
+        "ptsrebast": "PRA",
+        "pra": "PRA",
+        "stlblk": "SB",
+        "sb": "SB",
     }
     return aliases.get(token, token.upper())
 
@@ -1721,8 +1751,25 @@ def _collect_local_recent_market_history(data_root: str, max_games: int = 5) -> 
                     "REB": safe_float(row.get("rebounds"), math.nan),
                     "AST": safe_float(row.get("assists"), math.nan),
                     "STL": safe_float(row.get("steals"), math.nan),
+                    "BLK": safe_float(row.get("blocks"), math.nan),
+                    "TOV": safe_float(row.get("turnovers"), math.nan),
                     "3PM": safe_float(row.get("three_pm"), math.nan),
                 }
+                points = values.get("PTS", math.nan)
+                rebounds = values.get("REB", math.nan)
+                assists = values.get("AST", math.nan)
+                steals = values.get("STL", math.nan)
+                blocks = values.get("BLK", math.nan)
+                if not math.isnan(points) and not math.isnan(rebounds):
+                    values["PR"] = points + rebounds
+                if not math.isnan(points) and not math.isnan(assists):
+                    values["PA"] = points + assists
+                if not math.isnan(rebounds) and not math.isnan(assists):
+                    values["RA"] = rebounds + assists
+                if not math.isnan(points) and not math.isnan(rebounds) and not math.isnan(assists):
+                    values["PRA"] = points + rebounds + assists
+                if not math.isnan(steals) and not math.isnan(blocks):
+                    values["SB"] = steals + blocks
                 for market, value in values.items():
                     if math.isnan(value):
                         continue
@@ -1811,7 +1858,7 @@ def load_prop_candidates(props_json_path: str, h2h_json_path: str = "") -> List[
 
             opponent = str(prop.get("opponent", "")).strip() or (away if normalize_team_key(team) == normalize_team_key(home) else home)
             market = normalize_market(prop.get("market"))
-            if market not in {"PTS", "REB", "AST", "STL", "3PM"}:
+            if market not in {"PTS", "REB", "AST", "STL", "BLK", "TOV", "3PM", "PR", "PA", "RA", "PRA", "SB"}:
                 continue
 
             line = safe_float(prop.get("line"), math.nan)
@@ -1986,6 +2033,18 @@ def merge_prop_candidates(primary: List[dict], secondary: List[dict]) -> List[di
         if (new_hist, new_best_odds) > (current_hist, current_best_odds):
             merged[key] = row
     return list(merged.values())
+
+
+def summarize_prop_markets(candidates: List[dict]) -> Dict[str, int]:
+    counts: Dict[str, int] = {}
+    for row in candidates if isinstance(candidates, list) else []:
+        if not isinstance(row, dict):
+            continue
+        market = normalize_market(row.get("market"))
+        if not market:
+            continue
+        counts[market] = int(counts.get(market, 0)) + 1
+    return dict(sorted(counts.items(), key=lambda item: item[0]))
 
 
 def _prop_projection(candidate: dict, rules: dict, learning_state: dict, dfs_projection_map: dict) -> dict:
@@ -2469,6 +2528,7 @@ def main() -> None:
         prop_candidates = merge_prop_candidates(tank01_prop_candidates, prop_candidates_primary)
     else:
         prop_candidates = merge_prop_candidates(prop_candidates_primary, tank01_prop_candidates)
+    prop_market_counts = summarize_prop_markets(prop_candidates)
     prop_parlay = build_player_prop_parlay(
         prop_candidates,
         rules,
@@ -2506,6 +2566,7 @@ def main() -> None:
         f"- Prop candidates merged: {len(prop_candidates)}\n"
         f"- Prop candidates (synthetic history): {tank01_prop_meta.get('synthetic_history_candidates', 0)}\n"
         f"- Prop history noise removed: {tank01_prop_meta.get('history_noise_removed_total', 0)}\n"
+        f"- Prop market coverage: {', '.join([f'{k}:{v}' for k, v in prop_market_counts.items()]) or 'none'}\n"
     )
 
     if args.dry_run:

@@ -221,6 +221,7 @@ python3 pete-nba-pipeline.py \
 - Prop direction now applies game-context bias from spread/total:
   - high totals + strong favorites bias against weak UNDER calls
   - low totals bias against weak OVER calls
+- Prop market scan includes: `PTS, REB, AST, STL, BLK, TOV, 3PM, PR, PA, RA, PRA, SB`.
 - Wagering remains fail-closed unless both are set:
   - `PETE_ENABLE_WAGERING=1`
   - quant rules file has `"enabled": true`
