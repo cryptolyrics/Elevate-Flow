@@ -12,7 +12,7 @@ Design:
 import argparse
 import json
 import time
-from datetime import UTC, date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
@@ -182,7 +182,7 @@ def build_output(game_date: str, injuries: List[dict]) -> dict:
     major_out_teams = sorted([team for team, items in teams.items() if any(item.get("major_out") for item in items)])
 
     return {
-        "generated_at": datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
         "date": game_date,
         "source": "espn",
         "teams": teams,
