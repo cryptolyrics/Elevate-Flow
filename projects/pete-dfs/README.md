@@ -13,6 +13,12 @@ Enable wagering only when both are true:
 1. `PETE_ENABLE_WAGERING=1`
 2. `projects/pete-dfs/config/quant_rules.json` has `"enabled": true`
 
+Current live baseline in `quant_rules.json`:
+- `min_edge_pct: 0.03`
+- `min_edge_dollars_per_1u: 0.12`
+- `prop_min_line_edge: 0.20`
+- `prop_min_model_edge_pct: 0.02`
+
 Hard risk filters for wagering:
 - home-team model boost configured in quant rules
 - back-to-back team filter

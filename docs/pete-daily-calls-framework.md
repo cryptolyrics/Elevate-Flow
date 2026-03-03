@@ -219,3 +219,8 @@ python3 pete-nba-pipeline.py \
 - Wagering remains fail-closed unless both are set:
   - `PETE_ENABLE_WAGERING=1`
   - quant rules file has `"enabled": true`
+- Live baseline thresholds (balanced):
+  - `min_edge_pct: 0.03`
+  - `min_edge_dollars_per_1u: 0.12`
+  - `prop_min_line_edge: 0.20`
+  - `prop_min_model_edge_pct: 0.02`

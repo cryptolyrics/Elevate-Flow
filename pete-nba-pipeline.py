@@ -2068,7 +2068,7 @@ Season: {season}
 
     report += """
 ---
-Safety: Script defaults to NO_BET until quant controls are explicitly enabled.
+Safety: Wagering is gated by PETE_ENABLE_WAGERING and quant_rules.json controls.
 """
 
     return report
