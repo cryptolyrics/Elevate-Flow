@@ -352,6 +352,39 @@ class PetePipelineTests(unittest.TestCase):
         self.assertEqual(len(parlay.get("legs", [])), 1)
         self.assertEqual(parlay["legs"][0]["direction"], "OVER")
 
+    def test_build_player_prop_parlay_uses_relaxed_fallback_when_strict_filters_empty(self):
+        os.environ["PETE_ENABLE_WAGERING"] = "1"
+        candidates = [
+            {
+                "player": "Fallback Candidate",
+                "team": "AAA",
+                "opponent": "BBB",
+                "market": "PTS",
+                "line": 30.41,
+                "odds_over": 1.9,
+                "odds_under": 1.9,
+                "last5": [30.4, 30.6, 30.5, 30.7, 30.6],
+                "game": "AAA @ BBB",
+            }
+        ]
+        rules = {
+            "enabled": True,
+            "prop_call_haircut_pct": 0.10,
+            "prop_min_line_edge": 0.20,
+            "prop_min_model_edge_pct": 0.02,
+            "prop_min_success_rate": 0.55,
+            "prop_min_abs_trend": 0.10,
+            "prop_relaxed_line_edge_scale": 0.60,
+            "prop_relaxed_model_edge_scale": 0.60,
+            "prop_relaxed_min_success_rate": 0.50,
+            "prop_relaxed_min_abs_trend": 0.05,
+            "prop_max_legs": 1,
+            "prop_trend_weight": 0.35,
+        }
+        parlay = self.module.build_player_prop_parlay(candidates, rules, learning_state={"player_prop_adjustments": {}, "player_prop_opp_adjustments": {}}, dfs_projection_map={})
+        self.assertEqual(len(parlay.get("legs", [])), 1)
+        self.assertIn("relaxed fallback gates", parlay.get("note", ""))
+
     def test_load_espn_major_out_teams_from_fixture(self):
         teams = self.module.load_espn_major_out_teams(str(FIXTURES / "sample_espn_injuries.json"))
         self.assertIn("lal", teams)

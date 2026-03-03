@@ -683,6 +683,12 @@ def load_quant_rules() -> dict:
         "prop_call_haircut_pct": 0.10,
         "prop_min_line_edge": 0.35,
         "prop_min_model_edge_pct": 0.03,
+        "prop_min_success_rate": 0.55,
+        "prop_min_abs_trend": 0.10,
+        "prop_relaxed_line_edge_scale": 0.60,
+        "prop_relaxed_model_edge_scale": 0.60,
+        "prop_relaxed_min_success_rate": 0.50,
+        "prop_relaxed_min_abs_trend": 0.05,
         "prop_max_legs": 3,
         "prop_trend_weight": 0.35,
         "prop_market_prior_weight": 0.25,
@@ -2125,86 +2131,128 @@ def build_player_prop_parlay(
     game_context = build_prop_game_context(odds_data or {})
     min_line_edge = safe_float(rules.get("prop_min_line_edge", 0.35), 0.35)
     min_model_edge = safe_float(rules.get("prop_min_model_edge_pct", 0.03), 0.03)
+    min_success_rate = clamp(safe_float(rules.get("prop_min_success_rate", 0.55), 0.55), 0.45, 0.75)
+    min_abs_trend = clamp(safe_float(rules.get("prop_min_abs_trend", 0.10), 0.10), 0.01, 0.35)
     market_prior_weight = clamp(safe_float(rules.get("prop_market_prior_weight", 0.25), 0.25), 0.0, 0.6)
 
-    scored = []
-    for candidate in prop_candidates:
-        model = _prop_projection(candidate, rules, state, projection_map)
-        line = safe_float(candidate.get("line"), 0.0)
-        # Apply safety haircut to edge from line (not absolute projection),
-        # so we reduce confidence without biasing toward UNDER by default.
-        raw_edge = model["projected"] - line
-        line_edge = raw_edge * (1.0 - model["haircut_pct"])
-        safe_projection = line + line_edge
-        if abs(line_edge) < min_line_edge:
-            continue
+    def _score_candidates(
+        edge_floor: float,
+        model_edge_floor: float,
+        success_floor: float,
+        trend_floor: float,
+    ) -> List[dict]:
+        scored_rows = []
+        for candidate in prop_candidates:
+            model = _prop_projection(candidate, rules, state, projection_map)
+            line = safe_float(candidate.get("line"), 0.0)
+            # Apply safety haircut to edge from line (not absolute projection),
+            # so we reduce confidence without biasing toward UNDER by default.
+            raw_edge = model["projected"] - line
+            line_edge = raw_edge * (1.0 - model["haircut_pct"])
+            safe_projection = line + line_edge
+            if abs(line_edge) < edge_floor:
+                continue
 
-        direction = "OVER" if line_edge > 0 else "UNDER"
-        odds = candidate["odds_over"] if direction == "OVER" else candidate["odds_under"]
-        if odds <= 1.0:
-            continue
+            direction = "OVER" if line_edge > 0 else "UNDER"
+            odds = candidate["odds_over"] if direction == "OVER" else candidate["odds_under"]
+            if odds <= 1.0:
+                continue
 
-        values = candidate.get("last5", [])
-        over_rate = sum(1 for v in values if v > line) / len(values)
-        under_rate = sum(1 for v in values if v < line) / len(values)
-        success_rate = over_rate if direction == "OVER" else under_rate
-        prior_rate = market_prior_success_rate(state, candidate["market"], direction)
-        trend = model["trend"]
-        if success_rate < 0.60 and abs(trend) < 0.15:
-            continue
+            values = candidate.get("last5", [])
+            if not values:
+                continue
+            pushes = sum(1 for v in values if v == line)
+            over_rate = (sum(1 for v in values if v > line) + (0.5 * pushes)) / len(values)
+            under_rate = (sum(1 for v in values if v < line) + (0.5 * pushes)) / len(values)
+            success_rate = over_rate if direction == "OVER" else under_rate
+            prior_rate = market_prior_success_rate(state, candidate["market"], direction)
+            trend = model["trend"]
+            if success_rate < success_floor and abs(trend) < trend_floor:
+                continue
 
-        implied = 1.0 / odds
-        trend_signal = clamp(trend * 0.05, -0.1, 0.1)
-        line_signal = clamp(abs(line_edge) * 0.05, 0.0, 0.12)
-        blended_rate = ((1.0 - market_prior_weight) * success_rate) + (market_prior_weight * prior_rate)
-        model_prob = clamp(blended_rate + trend_signal + line_signal, 0.05, 0.92)
-        context_bias = prop_game_context_bias(candidate, direction, game_context, rules)
-        model_prob = clamp(model_prob + context_bias, 0.05, 0.92)
-        edge_prob = model_prob - implied
-        if edge_prob < min_model_edge:
-            continue
+            implied = 1.0 / odds
+            trend_signal = clamp(trend * 0.05, -0.1, 0.1)
+            line_signal = clamp(abs(line_edge) * 0.05, 0.0, 0.12)
+            blended_rate = ((1.0 - market_prior_weight) * success_rate) + (market_prior_weight * prior_rate)
+            model_prob = clamp(blended_rate + trend_signal + line_signal, 0.05, 0.92)
+            context_bias = prop_game_context_bias(candidate, direction, game_context, rules)
+            model_prob = clamp(model_prob + context_bias, 0.05, 0.92)
+            edge_prob = model_prob - implied
+            if edge_prob < model_edge_floor:
+                continue
 
-        ev = candidate_expected_return(model_prob, odds)
-        if ev <= 0:
-            continue
+            ev = candidate_expected_return(model_prob, odds)
+            if ev <= 0:
+                continue
 
-        safe_call = math.floor(safe_projection) if direction == "OVER" else math.ceil(safe_projection)
-        safe_call = max(safe_call, 0)
-        context_key = f"{normalize_team_key(candidate.get('team', ''))}::{normalize_team_key(candidate.get('opponent', ''))}"
-        context_row = game_context.get(context_key, {})
-        scored.append(
-            {
-                "player": candidate["player"],
-                "team": candidate["team"],
-                "opponent": candidate["opponent"],
-                "market": candidate["market"],
-                "direction": direction,
-                "line": round(line, 2),
-                "safe_call": safe_call,
-                "projected_raw": round(model["projected"], 3),
-                "projected_safe": round(safe_projection, 3),
-                "haircut_pct": round(model["haircut_pct"] * 100.0, 1),
-                "odds": odds,
-                "aus_odds": decimal_to_aus(odds),
-                "last5": values,
-                "last5_avg": round(model["avg_last5"], 3),
-                "trend": round(trend, 3),
-                "success_rate": round(success_rate, 3),
-                "market_prior_rate": round(prior_rate, 3),
-                "implied_prob": round(implied, 4),
-                "model_prob": round(model_prob, 4),
-                "edge_prob": round(edge_prob, 4),
-                "ev": round(ev, 4),
-                "learned_adj": round(model["learned_adj"], 3),
-                "learned_opp_adj": round(model["learned_opp_adj"], 3),
-                "game": candidate["game"],
-                "history_source": str(candidate.get("history_source", "")),
-                "history_noise_removed": int(safe_float(candidate.get("history_noise_removed", 0), 0)),
-                "context_bias": round(context_bias, 4),
-                "context_total": round(safe_float(context_row.get("consensus_total"), 0.0), 3),
-                "context_spread": round(safe_float(context_row.get("team_spread"), 0.0), 3),
-            }
+            safe_call = math.floor(safe_projection) if direction == "OVER" else math.ceil(safe_projection)
+            safe_call = max(safe_call, 0)
+            context_key = f"{normalize_team_key(candidate.get('team', ''))}::{normalize_team_key(candidate.get('opponent', ''))}"
+            context_row = game_context.get(context_key, {})
+            scored_rows.append(
+                {
+                    "player": candidate["player"],
+                    "team": candidate["team"],
+                    "opponent": candidate["opponent"],
+                    "market": candidate["market"],
+                    "direction": direction,
+                    "line": round(line, 2),
+                    "safe_call": safe_call,
+                    "projected_raw": round(model["projected"], 3),
+                    "projected_safe": round(safe_projection, 3),
+                    "haircut_pct": round(model["haircut_pct"] * 100.0, 1),
+                    "odds": odds,
+                    "aus_odds": decimal_to_aus(odds),
+                    "last5": values,
+                    "last5_avg": round(model["avg_last5"], 3),
+                    "trend": round(trend, 3),
+                    "success_rate": round(success_rate, 3),
+                    "market_prior_rate": round(prior_rate, 3),
+                    "implied_prob": round(implied, 4),
+                    "model_prob": round(model_prob, 4),
+                    "edge_prob": round(edge_prob, 4),
+                    "ev": round(ev, 4),
+                    "learned_adj": round(model["learned_adj"], 3),
+                    "learned_opp_adj": round(model["learned_opp_adj"], 3),
+                    "game": candidate["game"],
+                    "history_source": str(candidate.get("history_source", "")),
+                    "history_noise_removed": int(safe_float(candidate.get("history_noise_removed", 0), 0)),
+                    "context_bias": round(context_bias, 4),
+                    "context_total": round(safe_float(context_row.get("consensus_total"), 0.0), 3),
+                    "context_spread": round(safe_float(context_row.get("team_spread"), 0.0), 3),
+                }
+            )
+        return scored_rows
+
+    scored = _score_candidates(
+        edge_floor=min_line_edge,
+        model_edge_floor=min_model_edge,
+        success_floor=min_success_rate,
+        trend_floor=min_abs_trend,
+    )
+    relaxed_used = False
+    if not scored:
+        relaxed_edge_scale = clamp(safe_float(rules.get("prop_relaxed_line_edge_scale", 0.60), 0.60), 0.25, 1.0)
+        relaxed_model_scale = clamp(safe_float(rules.get("prop_relaxed_model_edge_scale", 0.60), 0.60), 0.25, 1.0)
+        relaxed_success = clamp(
+            safe_float(rules.get("prop_relaxed_min_success_rate", 0.50), 0.50),
+            0.45,
+            min_success_rate,
         )
+        relaxed_trend = clamp(
+            safe_float(rules.get("prop_relaxed_min_abs_trend", 0.05), 0.05),
+            0.01,
+            min_abs_trend,
+        )
+        relaxed_line_edge = max(0.10, min_line_edge * relaxed_edge_scale)
+        relaxed_model_edge = max(0.01, min_model_edge * relaxed_model_scale)
+        scored = _score_candidates(
+            edge_floor=relaxed_line_edge,
+            model_edge_floor=relaxed_model_edge,
+            success_floor=relaxed_success,
+            trend_floor=relaxed_trend,
+        )
+        relaxed_used = bool(scored)
 
     if not scored:
         return {"legs": [], "total_odds": 0, "note": "NO_PROP_PARLAY: candidates failed edge/safety filters"}
@@ -2228,7 +2276,11 @@ def build_player_prop_parlay(
     return {
         "legs": legs,
         "total_odds": round(total_odds, 3) if legs else 0,
-        "note": "Prop parlay built from last-5 matchup history with 10%+ safety haircut",
+        "note": (
+            "Prop parlay built from last-5 matchup history with 10%+ safety haircut (relaxed fallback gates)"
+            if relaxed_used
+            else "Prop parlay built from last-5 matchup history with 10%+ safety haircut"
+        ),
     }
 
 
