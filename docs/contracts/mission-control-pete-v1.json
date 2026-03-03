@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://elevate-flow/contracts/mission-control-pete-v1.json",
+  "title": "Mission Control Pete Payload v1",
+  "type": "object",
+  "required": [
+    "date",
+    "best_bet",
+    "team_parlay",
+    "player_prop_parlay",
+    "logic_summary",
+    "goal_tracker"
+  ],
+  "properties": {
+    "date": {
+      "type": "string",
+      "description": "AEST date in YYYY-MM-DD format."
+    },
+    "best_bet": {
+      "type": "object",
+      "required": [
+        "pick",
+        "odds",
+        "edge_pct",
+        "ev_per_1u",
+        "reason"
+      ],
+      "properties": {
+        "pick": {
+          "type": "string"
+        },
+        "odds": {
+          "type": "string"
+        },
+        "edge_pct": {
+          "type": "number"
+        },
+        "ev_per_1u": {
+          "type": "number"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "team_parlay": {
+      "type": "object",
+      "required": [
+        "status",
+        "legs",
+        "total_odds"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "READY",
+            "NO_PARLAY"
+          ]
+        },
+        "legs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "total_odds": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": true
+    },
+    "player_prop_parlay": {
+      "type": "object",
+      "required": [
+        "status",
+        "legs",
+        "total_odds"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "READY",
+            "NO_PROP_PARLAY"
+          ]
+        },
+        "legs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "player",
+              "market",
+              "direction",
+              "line",
+              "edge_pct"
+            ],
+            "properties": {
+              "player": {
+                "type": "string"
+              },
+              "market": {
+                "type": "string"
+              },
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "OVER",
+                  "UNDER"
+                ]
+              },
+              "line": {
+                "type": "number"
+              },
+              "edge_pct": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "total_odds": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": true
+    },
+    "logic_summary": {
+      "type": "object",
+      "required": [
+        "signals",
+        "risk_notes"
+      ],
+      "properties": {
+        "signals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "risk_notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "goal_tracker": {
+      "type": "object",
+      "required": [
+        "week_start",
+        "starting_bankroll_usd",
+        "total_staked_usd",
+        "wins",
+        "losses",
+        "pushes",
+        "gross_return_usd",
+        "net_pnl_usd",
+        "roi_pct",
+        "hit_rate_pct"
+      ],
+      "properties": {
+        "week_start": {
+          "type": "string"
+        },
+        "starting_bankroll_usd": {
+          "type": "number"
+        },
+        "total_staked_usd": {
+          "type": "number"
+        },
+        "wins": {
+          "type": "integer"
+        },
+        "losses": {
+          "type": "integer"
+        },
+        "pushes": {
+          "type": "integer"
+        },
+        "gross_return_usd": {
+          "type": "number"
+        },
+        "net_pnl_usd": {
+          "type": "number"
+        },
+        "roi_pct": {
+          "type": "number"
+        },
+        "hit_rate_pct": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
