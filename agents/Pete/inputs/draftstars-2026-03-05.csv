@@ -1,0 +1,292 @@
+Player ID,Position,Name,Team,Opponent,Salary,FPPG,Form,Playing Status
+7000801,SF,Kawhi Leonard,LA Clippers,Indiana Pacers,17150,45.13,47.42,EXPECTED STARTER
+7000801,PF,Kawhi Leonard,LA Clippers,Indiana Pacers,17150,45.13,47.42,EXPECTED STARTER
+7000845,PG,Jrue Holiday,Portland Trail Blazers,Memphis Grizzlies,13660,33.47,34.67,EXPECTED STARTER
+7000855,C,Nikola Vucevic,Boston Celtics,Charlotte Hornets,13540,35.64,37.17,
+7000875,SG,Jordan Clarkson,New York Knicks,Oklahoma City Thunder,6000,13.95,3.33,
+7000905,SF,Paul George,Philadelphia 76ers,Utah Jazz,13140,32.3,35.25,OUT
+7000907,PF,Jerami Grant,Portland Trail Blazers,Memphis Grizzlies,11110,28.89,25.33,EXPECTED STARTER
+7000911,C,Joel Embiid,Philadelphia 76ers,Utah Jazz,19730,44.9,47.83,OUT
+7000949,PF,Giannis Antetokounmpo,Milwaukee Bucks,Atlanta Hawks,19440,51.16,45,EXPECTED STARTER
+7000949,C,Giannis Antetokounmpo,Milwaukee Bucks,Atlanta Hawks,19440,51.16,45,EXPECTED STARTER
+7000967,SG,Bradley Beal,LA Clippers,Indiana Pacers,6000,12.54,14.67,OUT
+7001002,C,Brook Lopez,LA Clippers,Indiana Pacers,9610,16.25,22.92,EXPECTED STARTER
+7001019,PG,Kyle Lowry,Philadelphia 76ers,Utah Jazz,6000,5.07,5.67,
+7001066,C,Taj Gibson,Memphis Grizzlies,Portland Trail Blazers,6000,0,0,OUT
+7001102,C,Jusuf Nurkic,Utah Jazz,Philadelphia 76ers,13190,34.41,31.08,OUT
+7001108,SG,Gary Harris,Milwaukee Bucks,Atlanta Hawks,6000,7.26,7.33,
+7001117,C,Andre Drummond,Philadelphia 76ers,Utah Jazz,11880,22.12,18,EXPECTED STARTER
+7001119,SG,Kentavious Caldwell-Pope,Memphis Grizzlies,Portland Trail Blazers,6650,17.51,18.17,OUT
+7001193,PG,CJ McCollum,Atlanta Hawks,Milwaukee Bucks,11880,31.04,29.33,EXPECTED STARTER
+7001193,SG,CJ McCollum,Atlanta Hawks,Milwaukee Bucks,11880,31.04,29.33,EXPECTED STARTER
+7001197,PF,Nicolas Batum,LA Clippers,Indiana Pacers,6000,11.35,11.25,
+7001197,SF,Nicolas Batum,LA Clippers,Indiana Pacers,6000,11.35,11.25,
+7001198,PG,Damian Lillard,Portland Trail Blazers,Memphis Grizzlies,6000,0,0,OUT
+7001228,C,Kevin Love,Utah Jazz,Philadelphia 76ers,7140,18.48,20.75,
+7001308,PF,Bobby Portis,Milwaukee Bucks,Atlanta Hawks,9720,25.59,20.17,
+7001308,C,Bobby Portis,Milwaukee Bucks,Atlanta Hawks,9720,25.59,20.17,
+7001313,SF,Kelly Oubre,Philadelphia 76ers,Utah Jazz,12100,26.84,23.83,OUT
+7001313,PF,Kelly Oubre,Philadelphia 76ers,Utah Jazz,12100,26.84,23.83,OUT
+7001322,PG,T.J. McConnell,Indiana Pacers,LA Clippers,8100,21.31,17.67,
+7001333,C,Myles Turner,Milwaukee Bucks,Atlanta Hawks,10250,26.98,22.92,EXPECTED STARTER
+7001341,PG,Cameron Payne,Philadelphia 76ers,Utah Jazz,6000,10.54,11.75,EXPECTED STARTER
+7001357,SF,Pat Connaughton,Charlotte Hornets,Boston Celtics,6000,6.57,6.58,
+7001367,C,Karl-Anthony Towns,New York Knicks,Oklahoma City Thunder,17450,41.25,39.42,EXPECTED STARTER
+7001367,PF,Karl-Anthony Towns,New York Knicks,Oklahoma City Thunder,17450,41.25,39.42,EXPECTED STARTER
+7001371,SF,Thanasis Antetokounmpo,Milwaukee Bucks,Atlanta Hawks,6000,3.03,2.42,
+7001406,SF,Jaylen Brown,Boston Celtics,Charlotte Hornets,17780,45.98,50.67,EXPECTED STARTER
+7001409,PF,Pascal Siakam,Indiana Pacers,LA Clippers,15220,40.06,20.17,"EXPECTED STARTER, QUESTIONABLE TO PLAY"
+7001425,PG,Kris Dunn,LA Clippers,Indiana Pacers,10360,20.58,31.67,EXPECTED STARTER
+7001425,SG,Kris Dunn,LA Clippers,Indiana Pacers,10360,20.58,31.67,EXPECTED STARTER
+7001429,SG,Buddy Hield,Atlanta Hawks,Milwaukee Bucks,6000,15.38,13.42,
+7001429,SF,Buddy Hield,Atlanta Hawks,Milwaukee Bucks,6000,15.38,13.42,
+7001437,SF,Derrick Jones,LA Clippers,Indiana Pacers,9140,20.19,22.25,EXPECTED STARTER
+7001437,PF,Derrick Jones,LA Clippers,Indiana Pacers,9140,20.19,22.25,EXPECTED STARTER
+7001441,C,Ivica Zubac,Indiana Pacers,LA Clippers,12870,33.87,30.33,OUT
+7001447,SF,Taurean Prince,Milwaukee Bucks,Atlanta Hawks,6000,12.09,7,OUT
+7001447,PF,Taurean Prince,Milwaukee Bucks,Atlanta Hawks,6000,12.09,7,OUT
+7001500,SG,Derrick White,Boston Celtics,Charlotte Hornets,15660,37.31,39.5,EXPECTED STARTER
+7001500,PG,Derrick White,Boston Celtics,Charlotte Hornets,15660,37.31,39.5,EXPECTED STARTER
+7001512,SG,Bogdan Bogdanovic,LA Clippers,Indiana Pacers,6310,16.6,9.42,
+7001512,SF,Bogdan Bogdanovic,LA Clippers,Indiana Pacers,6310,16.6,9.42,
+7001534,PF,Kyle Kuzma,Milwaukee Bucks,Atlanta Hawks,9370,24.67,26.25,
+7001534,SF,Kyle Kuzma,Milwaukee Bucks,Atlanta Hawks,9370,24.67,26.25,
+7001539,SG,Alex Caruso,Oklahoma City Thunder,New York Knicks,6460,16.4,17.25,
+7001539,PG,Alex Caruso,Oklahoma City Thunder,New York Knicks,6460,16.4,17.25,
+7001550,SF,Josh Hart,New York Knicks,Oklahoma City Thunder,12220,32.17,35.67,EXPECTED STARTER
+7001550,PF,Josh Hart,New York Knicks,Oklahoma City Thunder,12220,32.17,35.67,EXPECTED STARTER
+7001561,PF,John Collins,LA Clippers,Indiana Pacers,10070,25.01,28.17,OUT
+7001561,C,John Collins,LA Clippers,Indiana Pacers,10070,25.01,28.17,OUT
+7001575,PF,Lauri Markkanen,Utah Jazz,Philadelphia 76ers,16080,42.32,34.5,OUT
+7001575,SF,Lauri Markkanen,Utah Jazz,Philadelphia 76ers,16080,42.32,34.5,OUT
+7001585,PF,Jayson Tatum,Boston Celtics,Charlotte Hornets,14760,0,0,OUT
+7001594,PF,OG Anunoby,New York Knicks,Oklahoma City Thunder,11920,30.9,27.92,EXPECTED STARTER
+7001594,SF,OG Anunoby,New York Knicks,Oklahoma City Thunder,11920,30.9,27.92,EXPECTED STARTER
+7022297,C,Jaren Jackson,Utah Jazz,Philadelphia 76ers,15150,34.3,35.83,OUT
+7022297,PF,Jaren Jackson,Utah Jazz,Philadelphia 76ers,15150,34.3,35.83,OUT
+7022309,SG,Gary Trent,Milwaukee Bucks,Atlanta Hawks,6000,12.85,4.42,
+7022309,SF,Gary Trent,Milwaukee Bucks,Atlanta Hawks,6000,12.85,4.42,
+7022321,SF,Svi Mykhailiuk,Utah Jazz,Philadelphia 76ers,7680,16.71,17.58,
+7022322,SF,Miles Bridges,Charlotte Hornets,Boston Celtics,12620,33.2,27.17,EXPECTED STARTER
+7022322,PF,Miles Bridges,Charlotte Hornets,Boston Celtics,12620,33.2,27.17,EXPECTED STARTER
+7022332,PG,Jalen Brunson,New York Knicks,Oklahoma City Thunder,15650,40.67,43.08,EXPECTED STARTER
+7022333,SG,Landry Shamet,New York Knicks,Oklahoma City Thunder,7190,16.84,19.92,
+7022335,SF,Mikal Bridges,New York Knicks,Oklahoma City Thunder,12110,31.86,31.42,EXPECTED STARTER
+7022335,SG,Mikal Bridges,New York Knicks,Oklahoma City Thunder,12110,31.86,31.42,EXPECTED STARTER
+7022345,C,Robert Williams,Portland Trail Blazers,Memphis Grizzlies,8000,20.27,26.58,
+7022347,C,Mitchell Robinson,New York Knicks,Oklahoma City Thunder,7940,20.89,15.17,OUT
+7022352,PG,Shai Gilgeous-Alexander,Oklahoma City Thunder,New York Knicks,19590,51.19,51,EXPECTED STARTER
+7022353,C,Mo Bamba,Utah Jazz,Philadelphia 76ers,6000,2.25,2.25,
+7022376,PF,Kenrich Williams,Oklahoma City Thunder,New York Knicks,6000,14.34,8.58,
+7022376,SF,Kenrich Williams,Oklahoma City Thunder,New York Knicks,6000,14.34,8.58,
+7022379,C,Isaiah Hartenstein,Oklahoma City Thunder,New York Knicks,11620,30.59,29,EXPECTED STARTER
+7022447,PG,Gabe Vincent,Atlanta Hawks,Milwaukee Bucks,6000,9.8,12.33,
+7022447,SG,Gabe Vincent,Atlanta Hawks,Milwaukee Bucks,6000,9.8,12.33,
+7022498,SG,Ty Jerome,Memphis Grizzlies,Portland Trail Blazers,12840,33.78,31.92,DOUBTFUL TO PLAY
+7022498,PG,Ty Jerome,Memphis Grizzlies,Portland Trail Blazers,12840,33.78,31.92,DOUBTFUL TO PLAY
+7022504,PG,Darius Garland,LA Clippers,Indiana Pacers,13020,32.67,33.42,EXPECTED STARTER
+7022506,PG,Coby White,Charlotte Hornets,Boston Celtics,11670,30.7,21.92,
+7022522,PF,Grant Williams,Charlotte Hornets,Boston Celtics,8040,17.1,17.58,OUT
+7022522,C,Grant Williams,Charlotte Hornets,Boston Celtics,8040,17.1,17.58,OUT
+7022523,SG,Matisse Thybulle,Portland Trail Blazers,Memphis Grizzlies,6000,14.08,17.75,
+7022523,SF,Matisse Thybulle,Portland Trail Blazers,Memphis Grizzlies,6000,14.08,17.75,
+7022532,PG,Ja Morant,Memphis Grizzlies,Portland Trail Blazers,16720,37.51,48.33,OUT
+7022538,SG,Kevin Porter,Milwaukee Bucks,Atlanta Hawks,15180,39.96,28,OUT
+7022538,PG,Kevin Porter,Milwaukee Bucks,Atlanta Hawks,15180,39.96,28,OUT
+7022540,SG,Nickeil Alexander-Walker,Atlanta Hawks,Milwaukee Bucks,12870,33.87,30.92,EXPECTED STARTER
+7022540,PG,Nickeil Alexander-Walker,Atlanta Hawks,Milwaukee Bucks,12870,33.87,30.92,EXPECTED STARTER
+7022549,C,Brandon Clarke,Memphis Grizzlies,Portland Trail Blazers,6000,10.5,10.5,OUT
+7022569,SF,Luguentz Dort,Oklahoma City Thunder,New York Knicks,7600,18.5,14.25,EXPECTED STARTER
+7022571,SG,John Konchar,Utah Jazz,Philadelphia 76ers,7850,13.14,16.42,
+7022571,SF,John Konchar,Utah Jazz,Philadelphia 76ers,7850,13.14,16.42,
+7022675,PG,Payton Pritchard,Boston Celtics,Charlotte Hornets,13300,32.89,30.25,
+7022677,SF,Aaron Nesmith,Indiana Pacers,LA Clippers,9530,25.08,14.58,"EXPECTED STARTER, QUESTIONABLE TO PLAY"
+7022680,SG,Isaiah Joe,Oklahoma City Thunder,New York Knicks,9860,19.29,23.42,
+7022681,PG,Tyrese Maxey,Philadelphia 76ers,Utah Jazz,21040,48.63,52.25,EXPECTED STARTER
+7022686,PF,Obi Toppin,Indiana Pacers,LA Clippers,8250,21.7,15.83,PROBABLE TO PLAY
+7022686,C,Obi Toppin,Indiana Pacers,LA Clippers,8250,21.7,15.83,PROBABLE TO PLAY
+7022691,C,Onyeka Okongwu,Atlanta Hawks,Milwaukee Bucks,14030,35.58,42.92,EXPECTED STARTER
+7022701,PF,Josh Green,Charlotte Hornets,Boston Celtics,6050,10.91,11.17,
+7022701,SF,Josh Green,Charlotte Hornets,Boston Celtics,6050,10.91,11.17,
+7022704,PG,Tyrese Haliburton,Indiana Pacers,LA Clippers,6000,0,0,OUT
+7022706,C,Xavier Tillman,Charlotte Hornets,Boston Celtics,6000,4.5,2.17,
+7022743,PG,LaMelo Ball,Charlotte Hornets,Boston Celtics,15930,39.67,41.42,EXPECTED STARTER
+7022744,SF,Deni Avdija,Portland Trail Blazers,Memphis Grizzlies,16740,44.06,15.42,"EXPECTED STARTER, QUESTIONABLE TO PLAY"
+7022744,PG,Deni Avdija,Portland Trail Blazers,Memphis Grizzlies,16740,44.06,15.42,"EXPECTED STARTER, QUESTIONABLE TO PLAY"
+7022745,SG,Vit Krejci,Portland Trail Blazers,Memphis Grizzlies,6410,16.88,18.5,
+7022745,SF,Vit Krejci,Portland Trail Blazers,Memphis Grizzlies,6410,16.88,18.5,
+7022800,SG,Cam Thomas,Milwaukee Bucks,Atlanta Hawks,8100,21.32,13.42,
+7022800,PG,Cam Thomas,Milwaukee Bucks,Atlanta Hawks,8100,21.32,13.42,
+7022805,PG,Miles McBride,New York Knicks,Oklahoma City Thunder,10280,23.31,22.75,OUT
+7022805,SG,Miles McBride,New York Knicks,Oklahoma City Thunder,10280,23.31,22.75,OUT
+7022806,C,Jericho Sims,Milwaukee Bucks,Atlanta Hawks,7240,11.89,14.08,
+7022806,PF,Jericho Sims,Milwaukee Bucks,Atlanta Hawks,7240,11.89,14.08,
+7022807,SG,Quentin Grimes,Philadelphia 76ers,Utah Jazz,10030,24.68,10.25,EXPECTED STARTER
+7022807,PG,Quentin Grimes,Philadelphia 76ers,Utah Jazz,10030,24.68,10.25,EXPECTED STARTER
+7022813,C,Luka Garza,Boston Celtics,Charlotte Hornets,6000,15.41,11.75,
+7022817,C,Isaiah Jackson,LA Clippers,Indiana Pacers,6160,16.21,4.58,
+7022823,PF,Jalen Johnson,Atlanta Hawks,Milwaukee Bucks,18870,49.67,30.58,EXPECTED STARTER
+7022829,SF,Corey Kispert,Atlanta Hawks,Milwaukee Bucks,7240,16.95,25.92,
+7022837,C,Neemias Queta,Boston Celtics,Charlotte Hornets,12100,26.96,31.92,EXPECTED STARTER
+7022839,PF,Santi Aldama,Memphis Grizzlies,Portland Trail Blazers,11500,30.26,25.5,OUT
+7022839,C,Santi Aldama,Memphis Grizzlies,Portland Trail Blazers,11500,30.26,25.5,OUT
+7022843,PG,Tre Mann,Charlotte Hornets,Boston Celtics,6000,13.49,4.08,
+7022843,SG,Tre Mann,Charlotte Hornets,Boston Celtics,6000,13.49,4.08,
+7022845,SG,Aaron Wiggins,Oklahoma City Thunder,New York Knicks,7850,20.65,18.42,
+7022845,SF,Aaron Wiggins,Oklahoma City Thunder,New York Knicks,7850,20.65,18.42,
+7022852,PF,Jonathan Kuminga,Atlanta Hawks,Milwaukee Bucks,11100,25.93,39.42,QUESTIONABLE TO PLAY
+7022859,C,Jock Landale,Atlanta Hawks,Milwaukee Bucks,9100,23.95,19.08,
+7022863,PG,Jose Alvarado,New York Knicks,Oklahoma City Thunder,7180,18.89,16.67,
+7022864,PF,Sam Hauser,Boston Celtics,Charlotte Hornets,9070,19.09,21.08,EXPECTED STARTER
+7022864,SF,Sam Hauser,Boston Celtics,Charlotte Hornets,9070,19.09,21.08,EXPECTED STARTER
+7022869,PF,Trendon Watford,Philadelphia 76ers,Utah Jazz,6000,14.77,12.5,
+7022874,C,Jay Huff,Indiana Pacers,LA Clippers,10020,20.98,20,EXPECTED STARTER
+7022889,SG,Ethan Thompson,Indiana Pacers,LA Clippers,6000,11.14,19.58,
+7022896,C,Micah Potter,Indiana Pacers,LA Clippers,11000,19.52,33.83,
+7022947,SG,Dyson Daniels,Atlanta Hawks,Milwaukee Bucks,12640,32.76,38,EXPECTED STARTER
+7022947,SF,Dyson Daniels,Atlanta Hawks,Milwaukee Bucks,12640,32.76,38,EXPECTED STARTER
+7022948,PG,Scoot Henderson,Portland Trail Blazers,Memphis Grizzlies,10400,23.83,18.83,
+7022950,SF,MarJon Beauchamp,Philadelphia 76ers,Utah Jazz,8030,21.13,21.13,
+7022953,SF,Ron Harper,Boston Celtics,Charlotte Hornets,6000,8.81,8.17,
+7022959,SG,AJ Green,Milwaukee Bucks,Atlanta Hawks,8130,18.67,11.67,EXPECTED STARTER
+7022961,PG,Scotty Pippen,Memphis Grizzlies,Portland Trail Blazers,10050,25.42,25.17,DOUBTFUL TO PLAY
+7022961,SG,Scotty Pippen,Memphis Grizzlies,Portland Trail Blazers,10050,25.42,25.17,DOUBTFUL TO PLAY
+7022976,C,Christian Koloko,Atlanta Hawks,Milwaukee Bucks,6000,10.81,6,
+7022979,SG,Tyrese Martin,Philadelphia 76ers,Utah Jazz,6000,14.58,5.33,
+7022979,PG,Tyrese Martin,Philadelphia 76ers,Utah Jazz,6000,14.58,5.33,
+7022982,PG,Andrew Nembhard,Indiana Pacers,LA Clippers,12960,34.1,36.92,"EXPECTED STARTER, QUESTIONABLE TO PLAY"
+7022984,SF,Bennedict Mathurin,LA Clippers,Indiana Pacers,12940,30.15,23.17,
+7022984,SG,Bennedict Mathurin,LA Clippers,Indiana Pacers,12940,30.15,23.17,
+7022986,C,Moussa Diabate,Charlotte Hornets,Boston Celtics,11280,25.23,30.5,EXPECTED STARTER
+7022989,SG,Dalen Terry,Philadelphia 76ers,Utah Jazz,6000,9.38,8.92,
+7022992,PG,Ryan Rollins,Milwaukee Bucks,Atlanta Hawks,13080,34.41,23.33,EXPECTED STARTER
+7022998,SG,Vince Williams,Utah Jazz,Philadelphia 76ers,7840,20.63,11.25,OUT
+7022998,PG,Vince Williams,Utah Jazz,Philadelphia 76ers,7840,20.63,11.25,OUT
+7023006,PG,TyTy Washington,LA Clippers,Indiana Pacers,6000,7.92,5.58,
+7023008,SG,Blake Wesley,Portland Trail Blazers,Memphis Grizzlies,6000,13.35,14.42,
+7023009,PF,Jeremy Sochan,New York Knicks,Oklahoma City Thunder,6000,8.5,2.25,
+7023014,SF,Caleb Houstan,Atlanta Hawks,Milwaukee Bucks,6000,3.5,1.58,
+7023014,PF,Caleb Houstan,Atlanta Hawks,Milwaukee Bucks,6000,3.5,1.58,
+7023018,C,Jaylin Williams,Oklahoma City Thunder,New York Knicks,11240,20.24,29.5,
+7023019,SF,Jalen Williams,Oklahoma City Thunder,New York Knicks,14840,34.29,29,OUT
+7023019,PF,Jalen Williams,Oklahoma City Thunder,New York Knicks,14840,34.29,29,OUT
+7023020,PF,Ousmane Dieng,Milwaukee Bucks,Atlanta Hawks,6380,10.8,15.08,EXPECTED STARTER
+7023020,SF,Ousmane Dieng,Milwaukee Bucks,Atlanta Hawks,6380,10.8,15.08,EXPECTED STARTER
+7023021,C,Chet Holmgren,Oklahoma City Thunder,New York Knicks,14950,34.95,42.58,EXPECTED STARTER
+7023021,PF,Chet Holmgren,Oklahoma City Thunder,New York Knicks,14950,34.95,42.58,EXPECTED STARTER
+7023023,C,Walker Kessler,Utah Jazz,Philadelphia 76ers,14590,38.4,40,OUT
+7023026,SG,Shaedon Sharpe,Portland Trail Blazers,Memphis Grizzlies,12710,33.45,18.42,OUT
+7023026,SF,Shaedon Sharpe,Portland Trail Blazers,Memphis Grizzlies,12710,33.45,18.42,OUT
+7023027,PF,Jabari Walker,Philadelphia 76ers,Utah Jazz,6000,9.62,10.25,
+7023031,PF,Dominick Barlow,Philadelphia 76ers,Utah Jazz,10310,18.92,15.67,EXPECTED STARTER
+7023060,PG,Quenton Jackson,Indiana Pacers,LA Clippers,8140,16.58,18.92,
+7023060,SG,Quenton Jackson,Indiana Pacers,LA Clippers,8140,16.58,18.92,
+7023061,PG,Keaton Wallace,Atlanta Hawks,Milwaukee Bucks,6000,9.14,2.58,
+7023095,SF,Sidy Cissoko,Portland Trail Blazers,Memphis Grizzlies,6000,13.65,8.58,
+7023095,SG,Sidy Cissoko,Portland Trail Blazers,Memphis Grizzlies,6000,13.65,8.58,
+7023104,SG,Ben Sheppard,Indiana Pacers,LA Clippers,8060,15.39,19.33,
+7023104,PG,Ben Sheppard,Indiana Pacers,LA Clippers,8060,15.39,19.33,
+7023105,PF,Jarace Walker,Indiana Pacers,LA Clippers,14140,22.92,30.75,EXPECTED STARTER
+7023107,SF,Brandon Miller,Charlotte Hornets,Boston Celtics,14420,35.76,41.83,EXPECTED STARTER
+7023107,SG,Brandon Miller,Charlotte Hornets,Boston Celtics,14420,35.76,41.83,EXPECTED STARTER
+7023114,PF,Kobe Brown,Indiana Pacers,LA Clippers,8280,9.39,18,
+7023117,PF,Olivier-Maxence Prosper,Memphis Grizzlies,Portland Trail Blazers,8650,14.25,24.83,EXPECTED STARTER
+7023117,C,Olivier-Maxence Prosper,Memphis Grizzlies,Portland Trail Blazers,8650,14.25,24.83,EXPECTED STARTER
+7023123,SG,Cason Wallace,Oklahoma City Thunder,New York Knicks,13660,21.84,26.75,EXPECTED STARTER
+7023123,PG,Cason Wallace,Oklahoma City Thunder,New York Knicks,13660,21.84,26.75,EXPECTED STARTER
+7023124,SF,Kris Murray,Portland Trail Blazers,Memphis Grizzlies,6000,15.43,10.42,QUESTIONABLE TO PLAY
+7023126,PG,Keyonte George,Utah Jazz,Philadelphia 76ers,15490,40.75,28.25,EXPECTED STARTER
+7023127,SF,Brice Sensabaugh,Utah Jazz,Philadelphia 76ers,9830,20.61,21.83,
+7023128,PF,Taylor Hendricks,Memphis Grizzlies,Portland Trail Blazers,8630,13.77,23.83,QUESTIONABLE TO PLAY
+7023129,PF,Jordan Walsh,Boston Celtics,Charlotte Hornets,6000,14.22,9.25,
+7023135,SF,Andre Jackson,Milwaukee Bucks,Atlanta Hawks,6000,4.27,3,
+7023137,PF,Mouhamed Gueye,Atlanta Hawks,Milwaukee Bucks,6000,13.34,14.75,
+7023137,C,Mouhamed Gueye,Atlanta Hawks,Milwaukee Bucks,6000,13.34,14.75,
+7023143,SF,Jordan Miller,LA Clippers,Indiana Pacers,8190,17.63,25.08,
+7023146,SF,Jalen Slawson,Indiana Pacers,LA Clippers,6000,0,0,
+7023147,PF,GG Jackson,Memphis Grizzlies,Portland Trail Blazers,12540,20.51,27.58,EXPECTED STARTER
+7023147,SF,GG Jackson,Memphis Grizzlies,Portland Trail Blazers,12540,20.51,27.58,EXPECTED STARTER
+7023148,PF,Toumani Camara,Portland Trail Blazers,Memphis Grizzlies,11190,26.66,24.25,EXPECTED STARTER
+7023148,SF,Toumani Camara,Portland Trail Blazers,Memphis Grizzlies,11190,26.66,24.25,EXPECTED STARTER
+7023156,SG,Rayan Rupert,Memphis Grizzlies,Portland Trail Blazers,8000,8.96,24.75,
+7023162,C,Oscar Tshiebwe,Utah Jazz,Philadelphia 76ers,6000,10.21,11.92,
+7023185,SG,Javonte Cooke,Portland Trail Blazers,Memphis Grizzlies,6000,3.49,1.67,OUT
+7023190,PF,Pete Nance,Milwaukee Bucks,Atlanta Hawks,6000,9.13,3.58,
+7023202,SF,Tosan Evbuomwan,Charlotte Hornets,Boston Celtics,6000,0.5,0,
+7023213,C,Trey Jemison,New York Knicks,Oklahoma City Thunder,6000,3.32,2.33,
+7023248,SG,Jared McCain,Oklahoma City Thunder,New York Knicks,7760,14.6,21.5,
+7023253,SG,Baylor Scheierman,Boston Celtics,Charlotte Hornets,8010,11.68,23.25,EXPECTED STARTER
+7023253,SF,Baylor Scheierman,Boston Celtics,Charlotte Hornets,8010,11.68,23.25,EXPECTED STARTER
+7023259,SF,Dillon Jones,New York Knicks,Oklahoma City Thunder,6000,5,7.17,
+7023264,C,Zach Edey,Memphis Grizzlies,Portland Trail Blazers,15300,33.77,31.92,OUT
+7023266,C,Donovan Clingan,Portland Trail Blazers,Memphis Grizzlies,13400,33.28,39.42,EXPECTED STARTER
+7023267,PG,Isaiah Collier,Utah Jazz,Philadelphia 76ers,12050,27.01,27.83,
+7023268,SG,Cody Williams,Utah Jazz,Philadelphia 76ers,6000,12.09,10.67,EXPECTED STARTER
+7023268,SF,Cody Williams,Utah Jazz,Philadelphia 76ers,6000,12.09,10.67,EXPECTED STARTER
+7023270,SG,Pacome Dadiet,New York Knicks,Oklahoma City Thunder,6000,2.53,4.75,
+7023271,SF,Zaccharie Risacher,Atlanta Hawks,Milwaukee Bucks,7440,19.57,21.92,
+7023271,PF,Zaccharie Risacher,Atlanta Hawks,Milwaukee Bucks,7440,19.57,21.92,
+7023272,PG,Nikola Topic,Oklahoma City Thunder,New York Knicks,6000,7.3,6.17,
+7023274,PF,Tidjane Salaun,Charlotte Hornets,Boston Celtics,6000,13.94,8.17,OUT
+7023281,SF,Blake Hinson,Utah Jazz,Philadelphia 76ers,6000,13.75,13.42,
+7023286,SF,Justin Edwards,Philadelphia 76ers,Utah Jazz,6000,9.91,8.92,
+7023287,C,Adem Bona,Philadelphia 76ers,Utah Jazz,6940,13.13,12.58,
+7023292,SF,Kevin McCullar,New York Knicks,Oklahoma City Thunder,6000,5.67,2.42,
+7023293,PG,Tyler Kolek,New York Knicks,Oklahoma City Thunder,6000,11.68,1.33,
+7023294,C,Ariel Hukporti,New York Knicks,Oklahoma City Thunder,6000,7.41,3.75,
+7023296,SG,Antonio Reeves,Charlotte Hornets,Boston Celtics,6000,4.72,1,
+7023296,PG,Antonio Reeves,Charlotte Hornets,Boston Celtics,6000,4.72,1,
+7023297,SG,Johnny Furphy,Indiana Pacers,LA Clippers,6000,13.86,20.25,OUT
+7023297,SF,Johnny Furphy,Indiana Pacers,LA Clippers,6000,13.86,20.25,OUT
+7023300,SG,Cam Christie,LA Clippers,Indiana Pacers,6000,6.54,2.08,
+7023305,C,PJ Hall,Charlotte Hornets,Boston Celtics,6000,11.36,9.58,
+7023306,SG,Ajay Mitchell,Oklahoma City Thunder,New York Knicks,10340,27.22,24.42,OUT
+7023309,C,Branden Carlson,Oklahoma City Thunder,New York Knicks,6000,10.57,9.92,OUT
+7023317,PG,Cam Spencer,Memphis Grizzlies,Portland Trail Blazers,9420,24.8,26.92,
+7023318,SG,Jaylen Wells,Memphis Grizzlies,Portland Trail Blazers,9480,21.08,26,EXPECTED STARTER
+7023318,SF,Jaylen Wells,Memphis Grizzlies,Portland Trail Blazers,9480,21.08,26,EXPECTED STARTER
+7023322,C,Kyle Filipowski,Utah Jazz,Philadelphia 76ers,14130,24.2,29.17,EXPECTED STARTER
+7023322,PF,Kyle Filipowski,Utah Jazz,Philadelphia 76ers,14130,24.2,29.17,EXPECTED STARTER
+7023910,SG,Cormac Ryan,Milwaukee Bucks,Atlanta Hawks,6000,0,0,
+7023914,PG,RayJ Dennis,Atlanta Hawks,Milwaukee Bucks,6000,10.07,4.67,
+7023928,SG,Elijah Harkless,Utah Jazz,Philadelphia 76ers,8120,10.54,23.83,EXPECTED STARTER
+7023953,SG,VJ Edgecombe,Philadelphia 76ers,Utah Jazz,15060,31.78,33.25,OUT
+7023955,SG,Hugo Gonzalez,Boston Celtics,Charlotte Hornets,6730,11.33,25.67,
+7023957,SF,Kon Knueppel,Charlotte Hornets,Boston Celtics,14440,33.63,34.17,EXPECTED STARTER
+7023957,SG,Kon Knueppel,Charlotte Hornets,Boston Celtics,14440,33.63,34.17,EXPECTED STARTER
+7023958,SF,Liam McNeeley,Charlotte Hornets,Boston Celtics,6000,8.77,5.67,
+7023963,C,Yanic Konan Niederhauser,LA Clippers,Indiana Pacers,7160,9.8,21.75,
+7023964,PF,Asa Newell,Atlanta Hawks,Milwaukee Bucks,6000,9.82,3.58,
+7023971,C,Yang Hansen,Portland Trail Blazers,Memphis Grizzlies,6000,5.49,4.25,
+7023972,SG,Cedric Coward,Memphis Grizzlies,Portland Trail Blazers,10390,27.35,20.08,DOUBTFUL TO PLAY
+7023975,C,Thomas Sorber,Oklahoma City Thunder,New York Knicks,6000,0,0,OUT
+7023976,PG,Walter Clayton,Memphis Grizzlies,Portland Trail Blazers,9040,16.8,30.17,EXPECTED STARTER
+7023977,SF,Ace Bailey,Utah Jazz,Philadelphia 76ers,12420,21.88,31.5,EXPECTED STARTER
+7023977,SG,Ace Bailey,Utah Jazz,Philadelphia 76ers,12420,21.88,31.5,EXPECTED STARTER
+7023979,PF,Johni Broome,Philadelphia 76ers,Utah Jazz,6000,4.05,3.08,OUT
+7023983,PF,Amari Williams,Boston Celtics,Charlotte Hornets,6000,5.53,1.58,
+7023983,C,Amari Williams,Boston Celtics,Charlotte Hornets,6000,5.53,1.58,
+7023984,SG,Max Shulga,Boston Celtics,Charlotte Hornets,6000,0,0,
+7023987,SF,Mohamed Diawara,New York Knicks,Oklahoma City Thunder,6000,6.47,17.42,
+7023989,C,Ryan Kalkbrenner,Charlotte Hornets,Boston Celtics,7740,20.37,15.17,
+7023990,SG,Sion James,Charlotte Hornets,Boston Celtics,6000,14.66,15,
+7023993,SG,Kam Jones,Indiana Pacers,LA Clippers,7770,10.41,23.17,
+7023994,SG,Taelon Peter,Indiana Pacers,LA Clippers,8880,8.44,25.17,
+7023994,PG,Taelon Peter,Indiana Pacers,LA Clippers,8880,8.44,25.17,
+7023999,PG,Javon Small,Memphis Grizzlies,Portland Trail Blazers,11320,17.99,25.67,EXPECTED STARTER
+7023999,SG,Javon Small,Memphis Grizzlies,Portland Trail Blazers,11320,17.99,25.67,EXPECTED STARTER
+7024004,SG,Jahmai Mashack,Memphis Grizzlies,Portland Trail Blazers,6130,11.44,12.67,
+7024005,SG,Kobe Sanders,LA Clippers,Indiana Pacers,6000,13.86,12.92,
+7024010,SG,Brooks Barnhizer,Oklahoma City Thunder,New York Knicks,6000,4.92,2.83,
+7024010,PG,Brooks Barnhizer,Oklahoma City Thunder,New York Knicks,6000,4.92,2.83,
+7024012,SG,John Tonje,Boston Celtics,Charlotte Hornets,6000,2,2,
+7024016,SG,Caleb Love,Portland Trail Blazers,Memphis Grizzlies,7700,20.27,15.17,
+7024016,PG,Caleb Love,Portland Trail Blazers,Memphis Grizzlies,7700,20.27,15.17,
+7024032,PF,Norchad Omier,LA Clippers,Indiana Pacers,6000,1.25,1.25,
+7024035,C,Lawson Lovering,Memphis Grizzlies,Portland Trail Blazers,8690,22.88,22.88,
+7024036,SG,Keshon Gilbert,Atlanta Hawks,Milwaukee Bucks,6000,8.58,8.58,
+7024043,SG,Chris Youngblood,Portland Trail Blazers,Memphis Grizzlies,6000,4.3,9.83,
+7024218,SF,Alex Antetokounmpo,Milwaukee Bucks,Atlanta Hawks,6000,0,0,
+7024243,SG,Sean Pedulla,LA Clippers,Indiana Pacers,6000,0,0,
+7024245,SF,Payton Sandfort,Oklahoma City Thunder,New York Knicks,6000,0,0,
+7024246,SF,Jayson Kent,Portland Trail Blazers,Memphis Grizzlies,6000,0,0,
