@@ -1,0 +1,13 @@
+{
+  "name": "elevate-flow",
+  "version": "1.0.0",
+  "description": "Elevate Flow AI Agency Framework",
+  "scripts": {
+    "test": "jest",
+    "health": "curl localhost:3008/health",
+    "status": "curl -H 'X-MC-KEY: $MC_KEY' localhost:3008/v1/status"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  }
+}
