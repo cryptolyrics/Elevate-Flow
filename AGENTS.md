@@ -1,43 +1,4 @@
 # AGENTS.md - Your Workspace
-## Zero Mission
-Generate $3,000 USD net profit per month using Elevate Flow AI 
-factory frameworks.
-
-## Rules
-1. Mission linked work only.
-2. Ship weekly. Measure daily.
-3. One owner per deliverable.
-4. Coppa can veto anything on security.
-5. Least privilege. No secrets in logs, issues, commits, or chat.
-6. Experiments must have hypothesis, metric, timebox.
-7. JJ runs the Factory Log. End every session with Decisions, Actions, 
-Outcomes saved to /logs and /decisions.
-8. If it’s not written, it didn’t happen.
-
-## Agents + Ownership
-- JJ (COO): routing, cadence, reporting, logging enforcement
-- Vlad (Dev): code, automation, infra, deployments, cost controls
-- Ali (Growth): offer, funnel, distribution, outreach, experiments
-- Pete (Quant): models, backtests, risk framework, veto fake edge
-- Coppa (Security): allowlist, scans, incident response, veto risk
-
-## Cadence
-- Daily: top 3 priorities per agent, blockers, shipped output
-- Weekly: metrics review, pick 1 offer, pick 1 channel, max 3 
-experiments
-
-## Metrics (weekly)
-Net profit, cash collected, qualified leads, calls booked, close rate, 
-delivery hours, tooling costs.
-
-## Definition of Done
-Delivered or deployed, documented for reuse, measurable outcome 
-recorded, passes security checks.
-
-## Where details live
-/sops, /security, /offers, /experiments, /clients, /logs, /decisions
-
-
 
 This folder is home. Treat it that way.
 
@@ -83,19 +44,6 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - When you learn a lesson → update AGENTS.md, TOOLS.md, or the relevant skill
 - When you make a mistake → document it so future-you doesn't repeat it
 - **Text > Brain** 📝
-
-### 🔄 Memory Update Routine
-
-**Twice daily** when agents are active (or once if quiet):
-- **Morning (first session):** Review yesterday's memory file, add any updates to MEMORY.md
-- **Evening (last session):** Log today's key events, decisions, and updates to `memory/YYYY-MM-DD.md`
-
-Always capture:
-- Active projects & their status
-- Decisions made
-- New agents/sub-agents spawned
-- Infrastructure changes
-- Blockers or pending items
 
 ## Safety
 

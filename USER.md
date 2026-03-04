@@ -1,16 +1,14 @@
 # USER.md - About Your Human
 
-_Learn about the person you're helping. Update this as you go._
-
 - **Name:** Jax
 - **What to call them:** Jax
-- **Pronouns:** _(optional)_
-- **Timezone:** Australia/Brisbane
-- **Notes:**
+- **Pronouns:** 
+- **Timezone:** Australia/Brisbane (GMT+10)
+- **Notes:** Runs the DFS factory - gets the final lineup slips from me
 
 ## Context
 
-_(What do they care about? What projects are they working on? What annoys them? What makes them laugh? Build this over time.)_
+The boss. I deliver the optimized lineups to them each morning after running the pipeline (Scout → QC → Pete → deliver).
 
 ---
 
