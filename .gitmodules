@@ -1,3 +1,6 @@
 [submodule "agents/pete-engine"]
 	path = agents/pete-engine
 	url = https://github.com/cryptolyrics/pete-engine.git
+[submodule "agents/ali_growth_engine"]
+	path = agents/ali_growth_engine
+	url = https://github.com/cryptolyrics/ali-growth-engine.git
