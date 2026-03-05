@@ -1,50 +1,38 @@
-# Canonical v1 Architecture
+# Elevate Flow Architecture
 
-## Overview
-This document defines the canonical structure for Elevate Flow agent services.
+## Infrastructure
 
-## Directory Structure
+- **Mission Control API:** localhost:3008 (loopback only)
+- **Gateway:** localhost:18789 (loopback only)
+- **Clerk:** localhost:3008 (loopback only)
+- **Cloudflare Tunnel:** Exposes ONLY Mission Control hostname
 
+## Authentication
+
+- Auth header required for protected endpoints: `X-MC-KEY`
+- No public API exposure (loopback only)
+
+## Git Strategy
+
+> **"Git main is canon. Workspaces are pointers only."**
+
+- `main` branch on all repos = source of truth
+- Agent workspaces are local copies/pointers
+- Submodules track specific commits from agent repos
+
+## Agent Repos (Submodules)
+
+| Submodule | Repo URL | Purpose |
+|-----------|----------|---------|
+| agents/pete-engine | github.com/cryptolyrics/pete-engine | DFS optimization |
+| agents/ali_growth_engine | github.com/cryptolyrics/ali_growth_engine | Growth operations |
+
+## Sync Protocol
+
+Run `scripts/sync.sh` to sync local state with canon:
+
+```bash
+./scripts/sync.sh
 ```
-elevate-flow/
-├── docs/
-│   └── canon/          # Canonical specs
-│       ├── AGENTS.md   # Agent definitions
-│       ├── WORKFLOWS.md # Trigger definitions
-│       └── API.md      # API contract
-├── registry/           # Agent task registries
-├── services/
-│   └── clerk-service/ # Output verification service
-├── openclaw/          # OpenClaw config snapshots
-├── agents/            # Agent profiles
-├── workflows/         # Cron definitions
-└── RUNBOOK.md         # Operations manual
-```
 
-## Agent Contract
-
-Each agent must:
-1. Read TASKS.md from workspace
-2. Execute tasks
-3. Write STATUS.md on completion
-4. Append to logs/YYYY-MM-DD.jsonl
-
-## API Contract
-
-### GET /v1/status
-Returns agent status.
-
-### GET /v1/logs?agent=&date=&tail=
-Returns log entries.
-
-### GET /v1/digest?date=
-Returns daily digest.
-
-### GET /v1/health-alarm?date=
-Returns health alarm report.
-
-## Workflow Triggers
-
-- Cron: Time-based execution
-- Heartbeat: Periodic check-ins
-- Webhook: External events
+This fetches latest, resets to origin/main, and updates submodules.

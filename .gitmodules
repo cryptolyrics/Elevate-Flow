@@ -1,0 +1,3 @@
+[submodule "agents/pete-engine"]
+	path = agents/pete-engine
+	url = https://github.com/cryptolyrics/pete-engine.git

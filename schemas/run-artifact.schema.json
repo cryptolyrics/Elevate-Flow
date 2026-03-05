@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Run Artifact",
+  "description": "Schema for agent run artifacts tracked in Elevate Flow",
+  "type": "object",
+  "required": ["runId", "agent", "project", "status", "ts"],
+  "properties": {
+    "runId": {
+      "type": "string",
+      "description": "Unique identifier for this run"
+    },
+    "agent": {
+      "type": "string",
+      "description": "Agent ID that executed the run"
+    },
+    "project": {
+      "type": "string",
+      "description": "Project or workspace name"
+    },
+    "job": {
+      "type": "string",
+      "description": "Job or task name"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "running", "success", "failed", "cancelled"],
+      "description": "Execution status"
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp"
+    },
+    "inputs": {
+      "type": "object",
+      "description": "Input parameters or files",
+      "additionalProperties": true
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Execution metrics (tokens, runtime, cost)",
+      "properties": {
+        "tokensIn": { "type": "number" },
+        "tokensOut": { "type": "number" },
+        "runtimeMs": { "type": "number" },
+        "cost": { "type": "number" }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "description": "Generated artifacts or outputs",
+      "additionalProperties": true
+    },
+    "errors": {
+      "type": "array",
+      "description": "Error messages if any",
+      "items": { "type": "string" }
+    }
+  }
+}
