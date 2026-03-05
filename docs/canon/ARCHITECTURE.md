@@ -27,6 +27,19 @@
 | agents/pete-engine | github.com/cryptolyrics/pete-engine | DFS optimization |
 | agents/ali_growth_engine | github.com/cryptolyrics/ali_growth_engine | Growth operations |
 
+## NBA Data Timing Rule 🇦🇺→🇺🇸
+
+**Australia (AEST/AEDT) is always one day ahead of the US NBA schedule.**
+
+- NBA games are played in the US on date X (e.g., March 6)
+- In Australia, it's already date X+1 (March 7)
+- Tank01/Draftstars data for "tonight's" games is available the **previous day** in AU time
+
+**Operational Law:**
+- Run DFS data collection on the **day before** the NBA date you want to bet
+- Example: For March 6 NBA games, pull data on March 5 AU time
+- The cron job should run at ~8-9am AU time on the day prior to capture evening US games
+
 ## Sync Protocol
 
 Run `scripts/sync.sh` to sync local state with canon:
