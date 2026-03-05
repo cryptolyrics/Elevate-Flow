@@ -1,7 +1,7 @@
 [submodule "agents/pete-engine"]
 	path = agents/pete-engine
-	url = https://github.com/cryptolyrics/pete-engine.git
+	url = git@github.com:cryptolyrics/pete-engine.git
 	branch = codex/pete-logic-engine
 [submodule "agents/ali_growth_engine"]
 	path = agents/ali_growth_engine
-	url = https://github.com/cryptolyrics/ali-growth-engine.git
+	url = git@github.com:cryptolyrics/ali-growth-engine.git
