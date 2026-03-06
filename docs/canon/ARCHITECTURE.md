@@ -40,6 +40,31 @@
 - Example: For March 6 NBA games, pull data on March 5 AU time
 - The cron job should run at ~8-9am AU time on the day prior to capture evening US games
 
+### USA Timezone Implementation in Pete's Code
+
+Pete's pipeline (`pete-nba-pipeline.py`) now uses **USA Eastern Time** as the reference for all NBA data:
+
+1. **Automatic USA Date Calculation:**
+   - The `get_usa_date()` function converts local AU time to USA Eastern Time
+   - Uses `zoneinfo.ZoneInfo("America/New_York")` when available (Python 3.9+)
+   - Falls back to manual calculation (~14 hours behind AU time)
+
+2. **Data File Naming:**
+   - All Tank01 API calls use USA date (e.g., `2026-03-05.json`)
+   - Data files are saved with USA date in filename
+   - Example: If it's March 6 in Australia, files are named `2026-03-05.json` (USA date)
+
+3. **API Calls:**
+   - Tank01 API `gameDate` parameter uses USA date
+   - All date-dependent operations default to USA date
+   - `--date` argument accepts USA date in YYYY-MM-DD format
+
+4. **Why This Matters:**
+   - NBA games are scheduled in US time zone
+   - "Tonight's" games in the US correspond to tomorrow in Australia
+   - Running data collection with AU date would fetch wrong day's games
+   - Using USA date ensures we always get the correct NBA schedule
+
 ## Sync Protocol
 
 Run `scripts/sync.sh` to sync local state with canon:

@@ -15,13 +15,52 @@ import subprocess
 import warnings
 import io
 import contextlib
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # Python < 3.9
+    ZoneInfo = None
+
+
+def get_usa_date() -> str:
+    """
+    Get the current USA Eastern Time date.
+    
+    NBA games are scheduled in US time, so all data collection and API calls
+    should use USA date (Eastern Time) rather than local Australia date.
+    
+    Australia (AEST/AEDT) is typically 14-15 hours ahead of US Eastern Time,
+    meaning when it's the next day in Australia, it's still the previous day in the US.
+    
+    Returns:
+        USA date in YYYY-MM-DD format (Eastern Time)
+    """
+    now_utc = datetime.now(timezone.utc)
+    
+    if ZoneInfo:
+        try:
+            usa_tz = ZoneInfo("America/New_York")
+            now_usa = now_utc.astimezone(usa_tz)
+            return now_usa.strftime("%Y-%m-%d")
+        except Exception:
+            pass
+    
+    # Fallback: manually calculate USA date (approximately -14 hours from AEST)
+    au_now = datetime.now()
+    usa_date = au_now - timedelta(hours=14)
+    if au_now.hour < 14:  # Before 2pm AU time
+        usa_date = usa_date - timedelta(days=1)
+    return usa_date.strftime("%Y-%m-%d")
+
 
 # Config
 WORKSPACE = Path("/Users/jjbot/.openclaw/workspace")
 LOG_DIR = WORKSPACE / "logs" / "Pete"
-TODAY = datetime.now().strftime("%Y-%m-%d")
+# USA date for NBA data - Australia is always 1 day ahead of US NBA schedule
+USA_TODAY = get_usa_date()
+TODAY = USA_TODAY  # Use USA date for all NBA data operations
 
 # Silence urllib3 LibreSSL warnings
 try:
