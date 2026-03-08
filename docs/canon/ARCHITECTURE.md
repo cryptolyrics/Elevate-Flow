@@ -1,83 +1,76 @@
-> CANON ROOT
-> This file is part of the active Elevate Flow source of truth.
-> Changes here define the operating canon.
+# Elevate Flow Architecture
 
-# Elevate Flow Canon — ARCHITECTURE
+## Infrastructure
 
-Elevate Flow is the AI factory / operating system running inside **Elevate Studios**.  
-This document defines how the factory is structured across planes and repos.
+- **Mission Control API:** localhost:3008 (loopback only)
+- **Gateway:** localhost:18789 (loopback only)
+- **Clerk:** localhost:3008 (loopback only)
+- **Cloudflare Tunnel:** Exposes ONLY Mission Control hostname
 
-## Top‑Level Structure (Factory Repo)
+## Authentication
 
-```text
-elevate-flow/
-  docs/canon/                # contracts, rules, flow, security
-  registry/                  # canonical agent + job registry
-  openclaw/templates/        # template notes
-  openclaw/generated/        # generated OpenClaw snapshots
-  services/clerk-service/    # packet normalization sidecar
-  agents/                    # agent identities + SOUL docs
-  projects/                  # local project workstreams (legacy only for Pete)
-  RUNBOOK.md                 # operator guide
+- Auth header required for protected endpoints: `X-MC-KEY`
+- No public API exposure (loopback only)
+
+## Git Strategy
+
+> **"Git main is canon. Workspaces are pointers only."**
+
+- `main` branch on all repos = source of truth
+- Agent workspaces are local copies/pointers
+- Submodules track specific commits from agent repos
+
+## Agent Repos (Submodules)
+
+| Submodule | Repo URL | Purpose |
+|-----------|----------|---------|
+| agents/pete-engine | github.com/cryptolyrics/pete-engine | DFS optimization |
+| agents/ali_growth_engine | github.com/cryptolyrics/ali_growth_engine | Growth operations |
+
+## NBA Data Timing Rule 🇦🇺→🇺🇸
+
+**Australia (AEST/AEDT) is always one day ahead of the US NBA schedule.**
+
+- NBA games are played in the US on date X (e.g., March 6)
+- In Australia, it's already date X+1 (March 7)
+- Tank01/Draftstars data for "tonight's" games is available the **previous day** in AU time
+
+**Operational Law:**
+- Run DFS data collection on the **day before** the NBA date you want to bet
+- Example: For March 6 NBA games, pull data on March 5 AU time
+- The cron job should run at ~8-9am AU time on the day prior to capture evening US games
+
+### USA Timezone Implementation in Pete's Code
+
+Pete's pipeline (`pete-nba-pipeline.py`) now uses **USA Eastern Time** as the reference for all NBA data:
+
+1. **Automatic USA Date Calculation:**
+   - The `get_usa_date()` function converts local AU time to USA Eastern Time
+   - Uses `zoneinfo.ZoneInfo("America/New_York")` when available (Python 3.9+)
+   - Falls back to manual calculation (~14 hours behind AU time)
+
+2. **Data File Naming:**
+   - All Tank01 API calls use USA date (e.g., `2026-03-05.json`)
+   - Data files are saved with USA date in filename
+   - Example: If it's March 6 in Australia, files are named `2026-03-05.json` (USA date)
+
+3. **API Calls:**
+   - Tank01 API `gameDate` parameter uses USA date
+   - All date-dependent operations default to USA date
+   - `--date` argument accepts USA date in YYYY-MM-DD format
+
+4. **Why This Matters:**
+   - NBA games are scheduled in US time zone
+   - "Tonight's" games in the US correspond to tomorrow in Australia
+   - Running data collection with AU date would fetch wrong day's games
+   - Using USA date ensures we always get the correct NBA schedule
+
+## Sync Protocol
+
+Run `scripts/sync.sh` to sync local state with canon:
+
+```bash
+./scripts/sync.sh
 ```
 
-```text
-external repos/
-  mission-control-dashboard/ # web UI shell and module pages
-  pete-engine/               # Pete quant logic, tests, and runtime
-```
-
-## Plane Separation
-
-- **Execution / Scheduling Plane — OpenClaw**
-  - Runs agents and cron jobs.
-  - Enforces schedules and runtime configs derived from `registry/`.
-
-- **Normalization Plane — Clerk**
-  - Validates packet outputs from agents.
-  - Normalizes into canonical workspace files (`TASKS.md`, `STATUS.md`, `logs/*`, `OUTPUTS/`).
-  - No LLM calls; purely deterministic.
-
-- **Control Configuration Plane — Registry**
-  - Defines agents, jobs, schedules, and workspaces.
-  - Drives generation of OpenClaw snapshots in `openclaw/generated/`.
-
-- **Visualization / Ops UI Plane — Mission Control Dashboard**
-  - Reads canonical workspaces and Registry state.
-  - Renders digests, health views, and job/agent status.
-  - Contains **no quant or core business logic**; display only.
-
-- **Quant Compute Plane — Pete Engine**
-  - Hosts Pete’s runtime strategies, backtests, and execution engine.
-  - Receives structured inputs from Elevate Flow; returns structured outputs.
-  - Elevate Flow owns contracts, routing, and guardrails, not implementation.
-
-## Data Flow (High‑Level)
-
-1. OpenClaw cron executes a job according to `registry/`.
-2. The job runs an agent with a defined system prompt and context.
-3. The agent emits **packet output** (no direct file writes to canon).
-4. Clerk validates the packet against the packet contract.
-5. Clerk normalizes the packet into canonical workspace files.
-6. Mission Control Dashboard and other consumers read canonical files for digests, alerts, and reports.
-
-## Pete Cutover (March 2026)
-
-- Quant runtime moved to external repo:  
-  `https://github.com/cryptolyrics/pete-engine`
-- Elevate Flow now:
-  - Defines Pete’s **contracts** (schemas, expected fields).
-  - Calls Pete Engine as an external compute plane.
-  - Owns **routing, monitoring, and risk guardrails** for Pete jobs.
-- Elevate Flow **must not** implement or modify Pete’s core quant logic here.
-- Mission Control UI consumes Pete payloads/contracts only; **no UI‑side quant calculations**.
-
-## Brand Relationship
-
-- **Elevate Studios** owns the broader business, clients, and product portfolio.
-- **Elevate Flow** is the dedicated factory/OS used by Elevate Studios to:
-  - Coordinate agents (JJ, Vlad, Ali, Pete, Coppa, Coach, subagents).
-  - Run packet pipelines.
-  - Generate canonical artifacts for reporting and operations.
-
-All new factory features must fit into this architecture or explicitly document why they do not.
+This fetches latest, resets to origin/main, and updates submodules.
