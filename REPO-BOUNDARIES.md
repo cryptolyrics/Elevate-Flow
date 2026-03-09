@@ -1,81 +1,60 @@
 # Repo Boundaries
 
-This document defines which repository each agent should work in and what belongs where.
+**Updated: 2026-03-09**
 
 ## Principle
 
-**One agent, one repo** (with exceptions for shared infrastructure). Agents should not modify code in repositories they don't own unless explicitly coordinated.
+ElevateFlow-V2 is the **factory operating repo** — the single source of truth for how the factory runs.
+It contains only canonical definitions, not runtime code.
 
 ---
 
-## Elevate-Flow
+## Repo Ownership Model
 
-**Owner:** System / All agents (shared)
-
-**What belongs here:**
-- Core CLI tools and utilities
-- Shared infrastructure code
-- Operations scripts (deployment, monitoring, etc.)
-- Generic agents and workflows that aren't tied to a specific project
-
-**What does NOT belong here:**
-- Project-specific business logic
-- Customer or product code
-- Feature work for specific agents
+| Repo | Purpose | What's Inside |
+|------|---------|---------------|
+| **ElevateFlow-V2** | Factory operating truth | AGENTS.md, RUNBOOK.md, agent identities/souls/lanes, docs, schemas |
+| **Pete Runtime** | Live quant execution | Adapters, brain, settlement, pipelines, storage, tests |
+| **Dashboard** | Web UI / service | package.json, services/, frontend code |
 
 ---
 
-## pete-engine
+## ElevateFlow-V2 Contents
 
-**Owner:** Pete
+**KEEP (Factory Definition):**
+- `AGENTS.md` — Factory agent roster
+- `RUNBOOK.md` — Operating procedures
+- `AGENT-PROFILES.md` — Agent capability profiles
+- `agents/*/IDENTITY.md` — Agent identity
+- `agents/*/SOUL.md` — Agent persona
+- `agents/*/LANE.md` — Agent responsibilities
+- `agents/*/README.md` — Agent overview
+- `docs/*` — Factory documentation
+- `schemas/*.json` — Shared schemas
 
-**What belongs here:**
-- Pete's personal agent configuration
-- Pete's custom tools and workflows
-- Any code Pete is actively developing
-- Experiments and prototypes specific to Pete's work
-
-**What does NOT belong here:**
-- Code belonging to other agents
-- Shared infrastructure (use Elevate-Flow)
-- Ali's work
-
----
-
-## ali-growth
-
-**Owner:** Ali
-
-**What belongs here:**
-- Ali's personal agent configuration
-- Ali's custom tools and workflows
-- Growth-specific automation and experiments
-- Any code Ali is actively developing
-
-**What does NOT belong here:**
-- Code belonging to other agents
-- Shared infrastructure (use Elevate-Flow)
-- Pete's work
+**DO NOT KEEP:**
+- Runtime code (PeteDFS_engine.py, pipelines)
+- Adapters, brain logic
+- Settlement, storage, logs
+- Data lakes, fixtures
+- Tests
+- Service code (dashboard)
 
 ---
 
-## Working Across Repos
+## Git Discipline
 
-If an agent needs to work in a repository they don't own:
-
-1. **Coordinate first** - Get permission from the repo owner
-2. **Create a branch** - Use `codex/<task>` or `feature/<name>` pattern
-3. **PR review** - Owner reviews before merge
-4. **Minimal changes** - Only what's needed, don't refactor unrelated code
+Every major session ends as:
+- **PUSHED** — Committed and pushed to remote
+- **PARKED** — Committed locally, not yet pushed
+- **DISCARDED** — Uncommitted changes intentionally dropped
 
 ---
 
-## Branch Naming Convention
+## Branch Naming
 
 | Prefix | Use For |
 |--------|---------|
-| `main` | Production-ready code only |
-| `codex/<task>` | Codex investigations, research tasks |
-| `feature/<name>` | New features, experiments, prototypes |
-
-Example: `codex/investigate-auth-issue`, `feature/add-analytics-dashboard`
+| `main` | Production-ready |
+| `feature/<name>` | New work |
+| `fix/<name>` | Bug fixes |

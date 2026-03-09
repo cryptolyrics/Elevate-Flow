@@ -1,50 +1,60 @@
+> LOCAL WORKSPACE MIRROR
+> Canonical source lives in ~/.openclaw/workspace-elevate-flow/
+> Do not treat this file as the source of truth unless an intentional local deviation is documented.
+
 # Elevate Flow — Runbook
 
-## Mission
-Generate $3,000 USD net profit per month using Elevate Flow AI factory frameworks.
+## 1. Purpose
 
-## Agents
+This workspace mirrors the **operational source of truth for Elevate Flow**, the AI factory / OS inside Elevate Studios.
 
-| Agent | Role | Model |
-|-------|------|-------|
-| JJ (COO) | Routing, cadence, reporting | MiniMax |
-| Vlad (Dev) | Code, automation, infra | Codex |
-| Ali (Growth) | Offer, funnel, distribution | MiniMax |
-| Pete (Quant) | Models, backtests, risk | GPT-5 Mini |
-| Coppa (Security) | Allowlist, scans, incident response | GPT-5 Mini |
-| Coach | Accountability | MiniMax |
-| Scout | Data scraping | MiniMax |
+- OpenClaw runs jobs.
+- Agents emit packet output.
+- Clerk normalizes packet output into canonical workspace files.
+- Registry drives job‑to‑agent mapping and generated OpenClaw snapshots.
+- Mission Control Dashboard visualises state; it does not run business logic.
 
-## Daily Cadence
+## 2. Repository Map (Canon Reference)
 
-- **8:00 AM:** Scout → Pete (DFS pipeline)
-- **9:00 AM:** Team morning runs
-- **5:30 PM:** Daily digest
-- **6:00 PM:** Health alarm
+See canon root for full details:
+- `docs/canon/` — constitutional docs and contracts (AGENTS, ARCHITECTURE, etc.)
+- `registry/` — agent/job registry (YAML)
+- `openclaw/generated/` — generated OpenClaw snapshots
+- `services/clerk-service/` — deterministic normalization service
+- `agents/` — agent identity + SOUL docs
+- `projects/` — legacy project workstreams
 
-## Services
+## 3. Prerequisites
+- Node.js 20+
+- npm 10+
+- OpenClaw CLI installed and authenticated locally
 
-### Clerk Service
-- Location: `services/clerk-service/`
-- Purpose: Agent output verification
-- Run: `pnpm start`
+## 4. Health & Clerk
+Use the same commands as the canon RUNBOOK for install, Clerk config, health checks, and status endpoints. When in doubt, open the canonical RUNBOOK in `workspace-elevate-flow/`.
 
-### Mission Control API
-- Port: 3008
-- Auth: X-MC-KEY header
+## 5. Agents at a Glance
 
-## Quick Commands
+Primary agents:
+- JJ (main) — COO / orchestration
+- Vlad — engineering lead
+- Ali — growth & GTM
+- Pete — quant lead (Pete Engine operator)
+- Coppa — security & compliance
+- Coach — Jax’s productivity & performance coach
 
-```bash
-# Health check
-curl localhost:3008/health
+Subagents:
+- Baby Vlad — junior developer under Vlad
+- Scout — research/recon under Ali
 
-# Agent status
-curl -H "X-MC-KEY: xxx" localhost:3008/v1/status
-```
+## 6. Pete & External Engines
+This mirror follows the same Pete Engine pattern as canon:
+- Pete is a primary agent.
+- Runtime logic is in the external Pete Engine repo.
+- Elevate Flow handles contracts, routing, monitoring, and guardrails only.
 
-## Troubleshooting
-
-- Agent not writing STATUS.md → check cron schedule
-- API down → check tunnel/DNS
-- Push fails → verify deploy key has write access
+## 7. Escalation
+For JJ’s workspace, escalation rules mirror canon:
+- Operational ambiguity → JJ.
+- Security → Coppa (+ JJ).
+- Quant/betting → Pete.
+- Human capacity / execution drift → Coach (+ JJ).
