@@ -1,23 +1,18 @@
 # NOW.md - Current Priorities
 
-_Last updated: 2026-02-27_
+_Last updated: 2026-03-10_
 
 ## Active Projects
-- Mission Control v2 (Elevate Flow dashboard)
-- GAS Lottery MVP
-- DFS Pipeline optimization
+- ElevateFlow-V2 boundaries (COMPLETED)
+- Workspace normalization (COMPLETED)
+- Telegram policy fix (COMPLETED)
+- Agent STATUS.md updates (IN PROGRESS)
 
 ## Agent Status
-- Vlad: Building Mission Control v2
-- Ali: UX research / X growth
-- Pete: DFS optimization
-- Scout: Data scraping
-- Coach: Accountability checks
-- Coppa: Security audits (needs respawn)
-
-## Open Questions
-- Tunnel DNS still propagating for mc-api.elevatestudios.io
+- Vlad: ✅ Active
+- Coach: ✅ Active
+- Ali/Pete/Coppa/Scout/JJ: Need STATUS.md
 
 ## Quick Wins
-1. Get tunnel working
-2. Test cron worker pattern
+1. Remind agents to update STATUS.md
+2. Verify Telegram routing is stable

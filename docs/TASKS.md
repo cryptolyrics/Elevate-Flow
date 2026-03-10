@@ -18,5 +18,6 @@
 ## P2. Daily Digest
 - ID: DIGEST-001
 - DoD: Compile and post daily digest to Telegram at 5:30pm
-- Status: **PENDING** - Scheduled for 5:30pm
-- Next action: Run daily at 5:30pm
+- Status: **IN PROGRESS** - Needs fix
+- Next action: Fix digest to properly read STATUS.md from all workspaces (jj, vlad, ali, pete, coppa, coach, scout)
+- Issues: Currently only reads some workspaces; needs automated health check across all agent workspaces

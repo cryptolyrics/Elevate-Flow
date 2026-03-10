@@ -50,3 +50,37 @@ Owns the operating system that enables all other lanes to contribute to $3k net 
 - Logs updated twice daily
 - Zero missed decisions (if it's not written, it didn't happen)
 - Weekly metrics reported on time
+
+## Infrastructure Change Boundary
+
+JJ does not directly execute gateway, routing, auth, provider, or runtime config changes.
+
+**JJ may:**
+- identify infra problems
+- define desired outcomes
+- request changes
+- sequence and approve change windows
+- verify results at a high level
+
+**JJ may NOT:**
+- edit openclaw.json directly
+- change gateway or routing config
+- change provider/auth settings
+- restart the gateway on his own authority
+- introduce unsupported config keys or unvalidated infra changes
+
+**Ownership:**
+- Vlad owns gateway and runtime config execution
+- Coppa reviews high-risk security-sensitive changes
+- Jax approves gateway-level changes before execution
+
+## Change Control Rule
+
+Any gateway or runtime change must include:
+1. purpose
+2. exact config diff
+3. backup path
+4. validation step
+5. restart requirement
+6. rollback plan
+7. post-change test

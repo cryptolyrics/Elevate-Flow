@@ -1,0 +1,23 @@
+# NOW.md - Current Priorities
+
+_Last updated: 2026-03-09_
+
+## Active Projects
+- ElevateFlow-V2 boundary cleanup (COMPLETED)
+- Workspace normalization (IN PROGRESS)
+- Scout subagent setup (PENDING: Telegram topic)
+
+## Agent Status
+- Vlad: Infrastructure / gateway config
+- Ali: Growth & GTM
+- Pete: Quant execution
+- Coppa: Security reviews
+- Coach: Accountability
+- Scout: Market recon (subagent under Ali)
+
+## Open Questions
+- Gateway routing for Scout topic 80
+
+## Quick Wins
+1. Verify Vlad/Pete topic routing
+2. Complete Scout setup
