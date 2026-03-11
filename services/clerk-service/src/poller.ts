@@ -5,6 +5,10 @@ import { FetchProvider, RunRecord } from "./provider";
 import { normalizePacket } from "./normalize";
 import { advanceState, loadState, touchPollState } from "./state";
 import { safeWriteFile } from "./sandbox";
+import { parseTaskPacketV1 } from "./task-packet-v1";
+import { TaskPacketError } from "./task-rejections";
+import { appendTaskRejection } from "./task-rejection-store";
+import { applyTaskPacket } from "./task-store";
 
 export interface JobPollResult {
   jobId: string;
@@ -119,16 +123,21 @@ export class Poller {
       let output = "";
       try {
         output = await this.provider.getRunOutput(run.runId);
-        const packet = parsePacket(output);
 
-        if (packet.agentId !== job.agentId) {
-          throw new Error(`agent mismatch expected=${job.agentId} actual=${packet.agentId}`);
-        }
-        if (packet.runId && packet.runId !== run.runId) {
-          throw new Error(`runId mismatch packet=${packet.runId} provider=${run.runId}`);
+        const processed = this.tryProcessTaskPacket(output, run, job);
+        if (!processed) {
+          const packet = parsePacket(output);
+
+          if (packet.agentId !== job.agentId) {
+            throw new Error(`agent mismatch expected=${job.agentId} actual=${packet.agentId}`);
+          }
+          if (packet.runId && packet.runId !== run.runId) {
+            throw new Error(`runId mismatch packet=${packet.runId} provider=${run.runId}`);
+          }
+
+          normalizePacket(this.config, job, packet);
         }
 
-        normalizePacket(this.config, job, packet);
         advanceState(this.config.workspaceRoot, job.jobId, run.runId);
         result.runsProcessed += 1;
       } catch (err) {
@@ -139,6 +148,48 @@ export class Poller {
     }
 
     return result;
+  }
+
+  private tryProcessTaskPacket(output: string, run: RunRecord, job: JobConfig): boolean {
+    const trimmed = output.trim();
+    if (!trimmed.startsWith("{")) {
+      return false;
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      return false;
+    }
+
+    try {
+      const packet = parseTaskPacketV1(parsed);
+      if (packet.actor.agent_id !== job.agentId && packet.actor.agent_id !== "jj") {
+        throw new TaskPacketError("UNAUTHORIZED_ACTOR", `actor mismatch expected=${job.agentId} actual=${packet.actor.agent_id}`);
+      }
+
+      applyTaskPacket(this.config.workspaceRoot, packet);
+      return true;
+    } catch (err) {
+      const rejectedAt = new Date().toISOString();
+      if (err instanceof TaskPacketError) {
+        const maybe = parsed as any;
+        appendTaskRejection(this.config.workspaceRoot, {
+          packet_id: maybe?.packet_id,
+          task_id: maybe?.payload?.task_id,
+          actor_id: maybe?.actor?.agent_id,
+          packet_timestamp: maybe?.timestamp,
+          rejected_at: rejectedAt,
+          code: err.code,
+          message: err.message,
+          details: err.details,
+          run_id: run.runId,
+          job_id: job.jobId,
+        });
+      }
+      throw err;
+    }
   }
 
   private writeDeadLetter(jobId: string, runId: string, err: Error, output: string): void {
