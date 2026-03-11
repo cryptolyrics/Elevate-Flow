@@ -80,6 +80,7 @@ export interface CanonicalTaskRecord {
   next_action?: string;
   closed_at?: string;
   closed_reason?: string;
+  reason?: string;
   blocker_owner?: string;
   review_path?: string;
   blocked_at?: string;

@@ -79,6 +79,7 @@ function applyPayload(record: CanonicalTaskRecord, packet: TaskPacketEnvelope, a
     notes: typeof payload.notes === "string" ? payload.notes : record.notes,
     next_action: typeof payload.next_action === "string" ? payload.next_action : record.next_action,
     artifacts: Array.isArray(payload.artifacts) ? (payload.artifacts as string[]) : record.artifacts,
+    reason: typeof payload.reason === "string" ? payload.reason : record.reason,
     blocker_owner: typeof payload.blocker_owner === "string" ? payload.blocker_owner : record.blocker_owner,
     review_path: typeof payload.review_path === "string" ? payload.review_path : record.review_path,
     blocked_at: typeof payload.blocked_at === "string" ? payload.blocked_at : record.blocked_at,
