@@ -1,0 +1,55 @@
+{
+  "task_id": "task-scenario-new-001",
+  "title": "Unclaimed scenario task",
+  "status": "DISCARDED",
+  "owner_agent": "jj",
+  "created_at": "2026-03-10T16:00:00.000Z",
+  "created_by": "jj",
+  "priority": "P2",
+  "source": "scenario",
+  "summary": "left new on purpose",
+  "acceptance_criteria": [
+    "exists"
+  ],
+  "artifacts": [],
+  "history": [
+    {
+      "packet_id": "scenario-001",
+      "task_id": "task-scenario-new-001",
+      "actor_id": "jj",
+      "action": "task.create",
+      "from_status": null,
+      "to_status": "NEW",
+      "packet_timestamp": "2026-03-11T04:26:00.221Z",
+      "accepted_at": "2026-03-11T04:26:00.223Z"
+    },
+    {
+      "packet_id": "discard-scenario-011",
+      "task_id": "task-scenario-new-001",
+      "actor_id": "jj",
+      "action": "task.claim",
+      "from_status": "NEW",
+      "to_status": "CLAIMED",
+      "packet_timestamp": "2026-03-11T10:03:21.688Z",
+      "accepted_at": "2026-03-11T10:03:21.702Z"
+    },
+    {
+      "packet_id": "discard-scenario-012",
+      "task_id": "task-scenario-new-001",
+      "actor_id": "jj",
+      "action": "task.discard",
+      "from_status": "CLAIMED",
+      "to_status": "DISCARDED",
+      "packet_timestamp": "2026-03-11T10:03:21.688Z",
+      "accepted_at": "2026-03-11T10:03:21.706Z",
+      "notes": "Discarded as synthetic scenario artifact after cadence verification"
+    }
+  ],
+  "last_packet_id": "discard-scenario-012",
+  "last_packet_timestamp": "2026-03-11T10:03:21.688Z",
+  "last_accepted_at": "2026-03-11T10:03:21.706Z",
+  "next_action": "discard test artifact",
+  "notes": "Discarded as synthetic scenario artifact after cadence verification",
+  "closed_at": "2026-03-11T10:03:21.706Z",
+  "closed_reason": "discarded"
+}

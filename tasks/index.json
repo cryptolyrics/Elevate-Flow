@@ -1,0 +1,83 @@
+{
+  "generated_at": "2026-03-11T10:03:21.706Z",
+  "open_task_ids": [
+    "task-jj-cadence-20260311-001",
+    "task-vlad-pete-20260311-001"
+  ],
+  "closed_task_ids": [
+    "task-live-sequence-001",
+    "task-scenario-blocked-bad-001",
+    "task-scenario-blocked-good-001",
+    "task-scenario-new-001",
+    "task-scenario-review-001"
+  ],
+  "tasks": {
+    "task-jj-cadence-20260311-001": {
+      "task_id": "task-jj-cadence-20260311-001",
+      "status": "IN_PROGRESS",
+      "owner_agent": "jj",
+      "reviewer_agent": "jj",
+      "priority": "P1",
+      "title": "Operate JJ daily cadence from canonical task-state",
+      "updated_at": "2026-03-11T09:42:08.726Z",
+      "packet_id": "pkt-jj-cadence-20260311-003"
+    },
+    "task-vlad-pete-20260311-001": {
+      "task_id": "task-vlad-pete-20260311-001",
+      "status": "IN_PROGRESS",
+      "owner_agent": "vlad",
+      "reviewer_agent": "jj",
+      "priority": "P1",
+      "title": "Execute narrow Pete V2 progression under the new operating model",
+      "updated_at": "2026-03-11T09:42:08.741Z",
+      "packet_id": "pkt-vlad-pete-20260311-003"
+    },
+    "task-live-sequence-001": {
+      "task_id": "task-live-sequence-001",
+      "status": "DONE",
+      "owner_agent": "vlad",
+      "reviewer_agent": "jj",
+      "priority": "P1",
+      "title": "Activate canonical task-state write path",
+      "updated_at": "2026-03-11T04:21:19.454Z",
+      "packet_id": "live-seq-005"
+    },
+    "task-scenario-blocked-bad-001": {
+      "task_id": "task-scenario-blocked-bad-001",
+      "status": "DISCARDED",
+      "owner_agent": "vlad",
+      "priority": "P1",
+      "title": "Blocked missing metadata",
+      "updated_at": "2026-03-11T10:02:57.032Z",
+      "packet_id": "discard-scenario-002"
+    },
+    "task-scenario-blocked-good-001": {
+      "task_id": "task-scenario-blocked-good-001",
+      "status": "DISCARDED",
+      "owner_agent": "vlad",
+      "priority": "P1",
+      "title": "Blocked with metadata",
+      "updated_at": "2026-03-11T10:02:57.044Z",
+      "packet_id": "discard-scenario-004"
+    },
+    "task-scenario-new-001": {
+      "task_id": "task-scenario-new-001",
+      "status": "DISCARDED",
+      "owner_agent": "jj",
+      "priority": "P2",
+      "title": "Unclaimed scenario task",
+      "updated_at": "2026-03-11T10:03:21.706Z",
+      "packet_id": "discard-scenario-012"
+    },
+    "task-scenario-review-001": {
+      "task_id": "task-scenario-review-001",
+      "status": "DISCARDED",
+      "owner_agent": "vlad",
+      "reviewer_agent": "jj",
+      "priority": "P1",
+      "title": "Overdue review scenario",
+      "updated_at": "2026-03-11T10:03:21.697Z",
+      "packet_id": "discard-scenario-010"
+    }
+  }
+}

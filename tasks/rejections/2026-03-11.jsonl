@@ -1,0 +1,1 @@
+{"packet_id":"scenario-reject-001","task_id":"task-scenario-bad-reject","actor_id":"ali","packet_timestamp":"2026-03-11T04:26:00.284Z","rejected_at":"2026-03-11T04:26:00.284Z","code":"UNAUTHORIZED_ACTOR","message":"actor mismatch for scenario","details":{"scenario":true}}

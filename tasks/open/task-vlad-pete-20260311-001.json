@@ -1,0 +1,63 @@
+{
+  "task_id": "task-vlad-pete-20260311-001",
+  "title": "Execute narrow Pete V2 progression under the new operating model",
+  "status": "IN_PROGRESS",
+  "owner_agent": "vlad",
+  "reviewer_agent": "jj",
+  "created_at": "2026-03-11T09:42:08.730Z",
+  "created_by": "vlad",
+  "priority": "P1",
+  "source": "jax-lockdown",
+  "summary": "Progress Pete V2 narrowly through the new task-state model, focused on best-bet optimisation and player parlay first pass.",
+  "acceptance_criteria": [
+    "Best-bet optimisation task is explicitly progressed",
+    "Player parlay first-pass task is defined for the next execution window",
+    "Pete runtime boundary remains external",
+    "No old repo/runtime drift is reintroduced",
+    "Work is tracked through canonical task-state, not ad hoc markdown drift"
+  ],
+  "artifacts": [],
+  "history": [
+    {
+      "packet_id": "pkt-vlad-pete-20260311-001",
+      "task_id": "task-vlad-pete-20260311-001",
+      "actor_id": "vlad",
+      "action": "task.create",
+      "from_status": null,
+      "to_status": "NEW",
+      "packet_timestamp": "2026-03-11T09:42:08.712Z",
+      "accepted_at": "2026-03-11T09:42:08.730Z"
+    },
+    {
+      "packet_id": "pkt-vlad-pete-20260311-002",
+      "task_id": "task-vlad-pete-20260311-001",
+      "actor_id": "vlad",
+      "action": "task.claim",
+      "from_status": "NEW",
+      "to_status": "CLAIMED",
+      "packet_timestamp": "2026-03-11T09:42:08.712Z",
+      "accepted_at": "2026-03-11T09:42:08.734Z"
+    },
+    {
+      "packet_id": "pkt-vlad-pete-20260311-003",
+      "task_id": "task-vlad-pete-20260311-001",
+      "actor_id": "vlad",
+      "action": "task.start",
+      "from_status": "CLAIMED",
+      "to_status": "IN_PROGRESS",
+      "packet_timestamp": "2026-03-11T09:42:08.712Z",
+      "accepted_at": "2026-03-11T09:42:08.741Z"
+    }
+  ],
+  "tags": [
+    "pete",
+    "vlad",
+    "execution"
+  ],
+  "project": "elevate-flow-v2",
+  "mission_link": "factory-operational",
+  "last_packet_id": "pkt-vlad-pete-20260311-003",
+  "last_packet_timestamp": "2026-03-11T09:42:08.712Z",
+  "last_accepted_at": "2026-03-11T09:42:08.741Z",
+  "next_action": "Progress best-bet optimisation and lock player parlay first-pass plan"
+}

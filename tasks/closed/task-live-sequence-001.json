@@ -1,0 +1,84 @@
+{
+  "task_id": "task-live-sequence-001",
+  "title": "Activate canonical task-state write path",
+  "status": "DONE",
+  "owner_agent": "vlad",
+  "reviewer_agent": "jj",
+  "created_at": "2026-03-11T04:21:19.434Z",
+  "created_by": "jj",
+  "priority": "P1",
+  "source": "jj-controlled-activation",
+  "summary": "Controlled first live write through Clerk task-state path.",
+  "acceptance_criteria": [
+    "canonical task files created",
+    "renderer outputs updated",
+    "lifecycle transitions succeed"
+  ],
+  "artifacts": [],
+  "history": [
+    {
+      "packet_id": "live-seq-001",
+      "task_id": "task-live-sequence-001",
+      "actor_id": "jj",
+      "action": "task.create",
+      "from_status": null,
+      "to_status": "NEW",
+      "packet_timestamp": "2026-03-11T04:21:19.432Z",
+      "accepted_at": "2026-03-11T04:21:19.434Z"
+    },
+    {
+      "packet_id": "live-seq-002",
+      "task_id": "task-live-sequence-001",
+      "actor_id": "jj",
+      "action": "task.claim",
+      "from_status": "NEW",
+      "to_status": "CLAIMED",
+      "packet_timestamp": "2026-03-11T04:21:19.433Z",
+      "accepted_at": "2026-03-11T04:21:19.441Z"
+    },
+    {
+      "packet_id": "live-seq-003",
+      "task_id": "task-live-sequence-001",
+      "actor_id": "vlad",
+      "action": "task.start",
+      "from_status": "CLAIMED",
+      "to_status": "IN_PROGRESS",
+      "packet_timestamp": "2026-03-11T04:21:19.433Z",
+      "accepted_at": "2026-03-11T04:21:19.447Z"
+    },
+    {
+      "packet_id": "live-seq-004",
+      "task_id": "task-live-sequence-001",
+      "actor_id": "vlad",
+      "action": "task.request_review",
+      "from_status": "IN_PROGRESS",
+      "to_status": "IN_REVIEW",
+      "packet_timestamp": "2026-03-11T04:21:19.433Z",
+      "accepted_at": "2026-03-11T04:21:19.451Z",
+      "notes": "Ready for review"
+    },
+    {
+      "packet_id": "live-seq-005",
+      "task_id": "task-live-sequence-001",
+      "actor_id": "vlad",
+      "action": "task.complete",
+      "from_status": "IN_REVIEW",
+      "to_status": "DONE",
+      "packet_timestamp": "2026-03-11T04:21:19.433Z",
+      "accepted_at": "2026-03-11T04:21:19.454Z",
+      "notes": "Controlled activation sequence complete"
+    }
+  ],
+  "tags": [
+    "clerk",
+    "activation"
+  ],
+  "project": "elevate-flow-v2",
+  "last_packet_id": "live-seq-005",
+  "last_packet_timestamp": "2026-03-11T04:21:19.433Z",
+  "last_accepted_at": "2026-03-11T04:21:19.454Z",
+  "next_action": "verify files on disk",
+  "notes": "Controlled activation sequence complete",
+  "closed_at": "2026-03-11T04:21:19.454Z",
+  "closed_reason": "completed"
+}
