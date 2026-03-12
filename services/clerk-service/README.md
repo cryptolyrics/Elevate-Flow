@@ -56,11 +56,12 @@ Optional trailing blocks:
 
 ## Canonical Writes
 
-For each job workspace:
+Legacy packet normalization writes only:
 
-- `STATUS.md` (atomic overwrite)
 - `logs/YYYY-MM-DD.jsonl` (append-only)
 - `OUTPUTS/**` (sandboxed artifact writes)
+
+Clerk V1 task-state truth lives separately under canonical `tasks/` and rendered root visibility files.
 
 Clerk internals:
 

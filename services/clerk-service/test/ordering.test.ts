@@ -85,8 +85,7 @@ describe("poller ordering and idempotency", () => {
     await poller.pollOnce();
 
     const statusPath = path.join(root, "workspace-baby-vlad", "STATUS.md");
-    const status = fs.readFileSync(statusPath, "utf8");
-    expect(status.trim()).toBe("Third");
+    expect(fs.existsSync(statusPath)).toBe(false);
 
     const logPath = path.join(root, "workspace-baby-vlad", "logs", `${new Date().toISOString().slice(0, 10)}.jsonl`);
     const lines = fs.readFileSync(logPath, "utf8").trim().split("\n");

@@ -1,8 +1,9 @@
 {
-  "generated_at": "2026-03-11T10:03:21.706Z",
+  "generated_at": "2026-03-12T10:35:00.000Z",
   "open_task_ids": [
     "task-jj-cadence-20260311-001",
-    "task-vlad-pete-20260311-001"
+    "task-vlad-pete-20260311-001",
+    "task-jj-player-parlay-20260312-001"
   ],
   "closed_task_ids": [
     "task-live-sequence-001",
@@ -31,6 +32,17 @@
       "title": "Execute narrow Pete V2 progression under the new operating model",
       "updated_at": "2026-03-11T09:42:08.741Z",
       "packet_id": "pkt-vlad-pete-20260311-003"
+    },
+    "task-jj-player-parlay-20260312-001": {
+      "task_id": "task-jj-player-parlay-20260312-001",
+      "status": "QUEUED",
+      "owner_agent": "vlad",
+      "reviewer_agent": "jj",
+      "priority": "P1",
+      "title": "Implement player parlay spec into ~/pete_engine_v2",
+      "updated_at": "2026-03-12T10:35:00.000Z",
+      "packet_id": "state-change-to-queued",
+      "state_reason": "Zero execution proof: no active session, no files changed, no events emitted, no tests started"
     },
     "task-live-sequence-001": {
       "task_id": "task-live-sequence-001",

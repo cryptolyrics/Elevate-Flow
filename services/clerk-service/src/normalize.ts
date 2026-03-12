@@ -27,8 +27,6 @@ export function normalizePacket(config: ClerkConfig, job: JobConfig, packet: Pac
 
   resolveInSandbox(config.workspaceRoot, workspaceRel);
 
-  safeWriteFile(config.workspaceRoot, path.join(workspaceRel, "STATUS.md"), packet.statusMd);
-
   const logFile = path.join(workspaceRel, "logs", `${datePart(packet.generatedAt)}.jsonl`);
   safeAppendLines(config.workspaceRoot, logFile, packet.logJsonl);
 
