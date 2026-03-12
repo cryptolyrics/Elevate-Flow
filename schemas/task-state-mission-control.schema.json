@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://elevateflow.local/schemas/task-state-mission-control.schema.json",
+  "title": "Mission Control Task State",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_id",
+    "title",
+    "owner",
+    "state",
+    "execution_mode",
+    "current_action",
+    "next_step",
+    "needs_jax",
+    "updated_at"
+  ],
+  "properties": {
+    "task_id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "owner": { "type": "string", "minLength": 1 },
+    "supporting_agents": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "default": []
+    },
+    "reviewer": {
+      "type": ["string", "null"],
+      "default": null
+    },
+    "execution_mode": {
+      "type": "string",
+      "enum": ["DIRECT", "SPECIALIST_ACTIVE", "SPECIALIST_REVIEW", "BLOCKED"]
+    },
+    "state": {
+      "type": "string",
+      "enum": ["queued", "running", "blocked", "waiting_review", "waiting_jax", "done"]
+    },
+    "current_action": { "type": "string", "minLength": 1 },
+    "blocker": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["summary", "owner", "next_unblock_action"],
+          "properties": {
+            "summary": { "type": "string", "minLength": 1 },
+            "owner": { "type": "string", "minLength": 1 },
+            "next_unblock_action": { "type": "string", "minLength": 1 },
+            "needs_jax": { "type": "boolean", "default": false }
+          }
+        }
+      ]
+    },
+    "next_step": { "type": "string", "minLength": 1 },
+    "needs_jax": { "type": "boolean" },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "active_runtime": { "type": "boolean" },
+        "files_changed": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "artifacts": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "tests_last_run": { "type": ["string", "null"] },
+        "runtime_output": { "type": ["string", "null"] },
+        "review_checkpoint": { "type": ["string", "null"] }
+      },
+      "default": {}
+    },
+    "ready_for_review": { "type": "boolean", "default": false },
+    "approved_by": {
+      "type": ["string", "null"],
+      "default": null
+    },
+    "started_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "default": null
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "next_checkpoint_eta": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "default": null
+    }
+  }
+}
