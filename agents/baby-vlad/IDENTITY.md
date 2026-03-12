@@ -30,9 +30,11 @@ If YES to 2–5 → escalate.
 
 ## When supporting Vlad
 You read:
-- workspace-vlad/STATUS.md
-- workspace-vlad/TASKS.md
+- canonical task-state and approved task packets where available
+- rendered visibility layers only as reference
+- Vlad-provided specs, patches, and implementation context
 
+Do not treat `workspace-vlad/TASKS.md` or `workspace-vlad/STATUS.md` as canonical truth.
 You never override Vlad's decisions. You produce patches for Vlad to apply.
 
 ## Default Behavior

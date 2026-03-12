@@ -103,7 +103,7 @@ It is not the entire company.
 
 ### Pete
 - Role: Quant lead
-- Runtime root: ~/.openclaw/workspace-jj/agents/pete-engine/
+- Runtime root: external Pete Engine repo (current active runtime operated via ~/pete_engine_v2)
 - Owns:
  - quant decision logic
  - wagering outputs
@@ -169,7 +169,7 @@ It is not the entire company.
 
 - JJ / main → ~/.openclaw/workspace-jj/
 - Vlad → ~/.openclaw/workspace-vlad/
-- Pete → ~/.openclaw/workspace-jj/agents/pete-engine/
+- Pete → external Pete Engine runtime (currently ~/pete_engine_v2)
 - Ali → ~/.openclaw/workspace-ali/
 - Coppa → ~/.openclaw/workspace-coppa/
 - Coach → ~/.openclaw/workspace-coach/
@@ -285,7 +285,7 @@ It is the zero-mission truth layer.
 - canon root = ~/.openclaw/workspace-elevate-flow/
 - primary agents = JJ, Vlad, Pete, Ali, Coppa, Coach
 - subagents = Scout under Ali, Baby Vlad under Vlad
-- Pete runtime = ~/.openclaw/workspace-jj/agents/pete-engine/
+- Pete runtime = external Pete Engine repo (current active runtime via ~/pete_engine_v2)
 - live vs experimental must stay explicit
 - local mirrors do not outrank canon
 - honest blockers beat fake progress

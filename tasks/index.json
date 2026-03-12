@@ -1,11 +1,16 @@
 {
-  "generated_at": "2026-03-12T10:35:00.000Z",
+  "generated_at": "2026-03-12T18:47:00.000Z",
   "open_task_ids": [
-    "task-jj-cadence-20260311-001",
-    "task-vlad-pete-20260311-001",
-    "task-jj-player-parlay-20260312-001"
+    "task-jj-gas-miniapp-20260312-001",
+    "task-jj-cross-slate-player-props-20260313-001",
+    "task-jj-botd-probability-20260313-001"
   ],
   "closed_task_ids": [
+    "task-vlad-pete-20260311-001",
+    "task-jj-cadence-20260311-001",
+    "task-jj-player-parlay-20260312-001",
+    "task-jj-injury-gtd-20260312-001",
+    "task-jj-player-parlay-20260312-002",
     "task-live-sequence-001",
     "task-scenario-blocked-bad-001",
     "task-scenario-blocked-good-001",
@@ -13,36 +18,48 @@
     "task-scenario-review-001"
   ],
   "tasks": {
-    "task-jj-cadence-20260311-001": {
-      "task_id": "task-jj-cadence-20260311-001",
-      "status": "IN_PROGRESS",
-      "owner_agent": "jj",
-      "reviewer_agent": "jj",
+    "task-jj-injury-gtd-20260312-001": {
+      "task_id": "task-jj-injury-gtd-20260312-001",
+      "status": "DONE",
+      "owner_agent": "vlad",
+      "reviewer_agent": "pete",
       "priority": "P1",
-      "title": "Operate JJ daily cadence from canonical task-state",
-      "updated_at": "2026-03-11T09:42:08.726Z",
-      "packet_id": "pkt-jj-cadence-20260311-003"
+      "title": "Implement injury + GTD logic in ~/pete_engine_v2",
+      "updated_at": "2026-03-12T21:55:00.000Z",
+      "packet_id": "pkt-vlad-injury-gtd-complete",
+      "closeout_note": "Code: injury_context.py + tests. Tests: 38 passed. Artifact: task1_injury_gtd_output.json. Pete approved with 2 fixes implemented (zero opportunity on fail_closed, conflicting OUT fails closed)."
     },
     "task-vlad-pete-20260311-001": {
       "task_id": "task-vlad-pete-20260311-001",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "owner_agent": "vlad",
       "reviewer_agent": "jj",
       "priority": "P1",
       "title": "Execute narrow Pete V2 progression under the new operating model",
-      "updated_at": "2026-03-11T09:42:08.741Z",
-      "packet_id": "pkt-vlad-pete-20260311-003"
+      "updated_at": "2026-03-12T14:46:00.000Z",
+      "packet_id": "pkt-vlad-pete-20260312-001",
+      "closeout_note": "Player parlay first-pass complete through Slice 10 (strict contract). 10 slices executed, all approved. NO_BET returned when no valid candidate found - correct fail-closed behavior. Next: requires SGP combo price resolver for live CANDIDATE production."
+    },
+    "task-jj-cadence-20260311-001": {
+      "task_id": "task-jj-cadence-20260311-001",
+      "status": "DONE",
+      "owner_agent": "jj",
+      "reviewer_agent": "jj",
+      "priority": "P1",
+      "title": "Operate JJ daily cadence from canonical task-state",
+      "updated_at": "2026-03-12T04:08:00.000Z",
+      "packet_id": "pkt-jj-cadence-20260312-001",
+      "closeout_note": "Validated JJ daily cadence under canonical task-state using the player parlay execution cycle end-to-end. TASKS.md and STATUS.md were not used as control surfaces."
     },
     "task-jj-player-parlay-20260312-001": {
       "task_id": "task-jj-player-parlay-20260312-001",
-      "status": "QUEUED",
+      "status": "DONE",
       "owner_agent": "vlad",
       "reviewer_agent": "jj",
       "priority": "P1",
       "title": "Implement player parlay spec into ~/pete_engine_v2",
-      "updated_at": "2026-03-12T10:35:00.000Z",
-      "packet_id": "state-change-to-queued",
-      "state_reason": "Zero execution proof: no active session, no files changed, no events emitted, no tests started"
+      "updated_at": "2026-03-12T12:44:00.000Z",
+      "packet_id": "pkt-player-parlay-approved"
     },
     "task-live-sequence-001": {
       "task_id": "task-live-sequence-001",
@@ -90,6 +107,52 @@
       "title": "Overdue review scenario",
       "updated_at": "2026-03-11T10:03:21.697Z",
       "packet_id": "discard-scenario-010"
+    },
+    "task-jj-player-parlay-20260312-002": {
+      "task_id": "task-jj-player-parlay-20260312-002",
+      "status": "DONE",
+      "owner_agent": "vlad",
+      "reviewer_agent": "pete",
+      "support_agent": "baby-vlad",
+      "priority": "P1",
+      "title": "Full-slate NBA player prop ranking with quant approval",
+      "updated_at": "2026-03-13T00:04:00.000Z",
+      "packet_id": "pkt-player-parlay-20260312-002-quant-approved",
+      "closeout_note": "Pete: QUANT-COMPLETE APPROVED. Full-slate ranking, pairwise dependence, SGP quote resolution, artifact contract validation, role-aware injury impact. Tests 20+ passing."
+    },
+    "task-jj-gas-miniapp-20260312-001": {
+      "task_id": "task-jj-gas-miniapp-20260312-001",
+      "status": "QUEUED",
+      "owner_agent": "vlad",
+      "reviewer_agent": "jj",
+      "support_agent": "baby-vlad",
+      "priority": "P2",
+      "title": "Rebuild GAS lottery Telegram mini-app with wallet portfolio intake",
+      "updated_at": "2026-03-12T21:42:00.000Z",
+      "packet_id": "pkt-vlad-gas-miniapp-20260312-001",
+      "note": "PAUSED - awaiting build repo/path confirmation"
+    },
+    "task-jj-cross-slate-player-props-20260313-001": {
+      "task_id": "task-jj-cross-slate-player-props-20260313-001",
+      "status": "QUEUED",
+      "owner_agent": "vlad",
+      "reviewer_agent": "pete",
+      "support_agent": "baby-vlad",
+      "priority": "P1",
+      "title": "Build cross-slate NBA single player prop ranking engine",
+      "updated_at": "2026-03-13T00:56:00.000Z",
+      "packet_id": "pkt-cross-slate-player-props-001"
+    },
+    "task-jj-botd-probability-20260313-001": {
+      "task_id": "task-jj-botd-probability-20260313-001",
+      "status": "QUEUED",
+      "owner_agent": "vlad",
+      "reviewer_agent": "pete",
+      "support_agent": "baby-vlad",
+      "priority": "P1",
+      "title": "Rebuild Bet of the Day probability model with injury/GTD/freshness handling",
+      "updated_at": "2026-03-13T01:16:00.000Z",
+      "packet_id": "pkt-botd-probability-001"
     }
   }
 }

@@ -19,12 +19,27 @@ Don't ask permission. Just do it.
 
 ## Memory
 
-You wake up fresh each session. These files are your continuity:
+You wake up fresh each session. Valid memory surfaces are only:
 
-- **Daily notes:** `memory/YYYY-MM-DD.md` (create `memory/` if needed) — raw logs of what happened
-- **Long-term:** `MEMORY.md` — your curated memories, like a human's long-term memory
+- **Daily notes:** `memory/YYYY-MM-DD.md` (create `memory/` if needed) — raw logs of what happened today
+- **Long-term:** root `MEMORY.md` — curated durable memory only
 
-Capture what matters. Decisions, context, things to remember. Skip the secrets unless asked to keep them.
+Do not treat `docs/MEMORY.md`, `NOW.md`, `STATUS.md`, `TASKS.md`, or random docs notes as live memory surfaces.
+Capture what matters in the two approved memory surfaces only.
+
+## Task Truth
+
+Operational task truth lives only in canonical task-state under `tasks/`.
+
+- `tasks/open/*.json`
+- `tasks/closed/*.json`
+- `tasks/events/YYYY-MM-DD.jsonl`
+- `tasks/index.json`
+
+`STATUS.md` and `TASKS.md` are visibility only and must never be treated as source of truth.
+
+When JJ closes a task canonically, he must also post a visible completion update.
+Canonical closeout without team-visible completion reporting is incomplete orchestration.
 
 ### 🧠 MEMORY.md - Your Long-Term Memory
 

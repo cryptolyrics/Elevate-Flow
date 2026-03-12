@@ -77,6 +77,10 @@ Private understanding is not progress.
 A task is not active just because Vlad has read it.
 If first proof is not produced, the task should remain queued rather than implied active.
 
+For technical work, Vlad must state the exact repo/path before or with first proof.
+If the repo/path is wrong or unclear, work must stop and re-anchor before continuing.
+Legacy reference paths may inform implementation, but they are not valid execution surfaces unless explicitly approved.
+
 ## Checkpoint Rule
 Vlad must build in reviewable slices.
 

@@ -2,7 +2,7 @@
 > Canonical source lives in ~/.openclaw/workspace-elevate-flow/
 > Do not treat this file as the source of truth unless an intentional local deviation is documented.
 
-# Elevate Flow — Runbook
+# Elevate Flow - Runbook
 
 ## 1. Purpose
 
@@ -11,18 +11,18 @@ This workspace mirrors the **operational source of truth for Elevate Flow**, the
 - OpenClaw runs jobs.
 - Agents emit packet output.
 - Clerk normalizes packet output into canonical workspace files.
-- Registry drives job‑to‑agent mapping and generated OpenClaw snapshots.
+- Registry drives job-to-agent mapping and generated OpenClaw snapshots.
 - Mission Control Dashboard visualises state; it does not run business logic.
 
 ## 2. Repository Map (Canon Reference)
 
 See canon root for full details:
-- `docs/canon/` — constitutional docs and contracts (AGENTS, ARCHITECTURE, etc.)
-- `registry/` — agent/job registry (YAML)
-- `openclaw/generated/` — generated OpenClaw snapshots
-- `services/clerk-service/` — deterministic normalization service
-- `agents/` — agent identity + SOUL docs
-- `projects/` — legacy project workstreams
+- `docs/canon/` - constitutional docs and contracts (AGENTS, ARCHITECTURE, etc.)
+- `registry/` - agent/job registry (YAML)
+- `openclaw/generated/` - generated OpenClaw snapshots
+- `services/clerk-service/` - deterministic normalization service
+- `agents/` - agent identity + SOUL docs
+- `projects/` - legacy project workstreams
 
 ## 3. Prerequisites
 - Node.js 20+
@@ -35,16 +35,16 @@ Use the same commands as the canon RUNBOOK for install, Clerk config, health che
 ## 5. Agents at a Glance
 
 Primary agents:
-- JJ (main) — COO / orchestration
-- Vlad — engineering lead
-- Ali — growth & GTM
-- Pete — quant lead (Pete Engine operator)
-- Coppa — security & compliance
-- Coach — Jax’s productivity & performance coach
+- JJ (main) - COO / orchestration
+- Vlad - engineering lead
+- Ali - growth & GTM
+- Pete - quant lead (Pete Engine operator)
+- Coppa - security & compliance
+- Coach - Jax's productivity & performance coach
 
 Subagents:
-- Baby Vlad — junior developer under Vlad
-- Scout — research/recon under Ali
+- Baby Vlad - junior developer under Vlad
+- Scout - research/recon under Ali
 
 ## 6. Pete & External Engines
 This mirror follows the same Pete Engine pattern as canon:
@@ -53,8 +53,28 @@ This mirror follows the same Pete Engine pattern as canon:
 - Elevate Flow handles contracts, routing, monitoring, and guardrails only.
 
 ## 7. Escalation
-For JJ’s workspace, escalation rules mirror canon:
+For JJ's workspace, escalation rules mirror canon:
 - Operational ambiguity → JJ.
 - Security → Coppa (+ JJ).
 - Quant/betting → Pete.
 - Human capacity / execution drift → Coach (+ JJ).
+
+## 8. Git Discipline
+
+Git is the durable source of truth.
+Local workspaces are drafting and execution surfaces.
+
+Every major working session must end in one of three states:
+- **PUSHED**: reviewed, committed, and pushed
+- **PARKED**: intentionally local, with a note explaining why
+- **DISCARDED**: intentionally dropped
+
+A major session ending push is required when:
+- canon materially changes
+- routing/workspace behavior changes
+- a feature milestone is reached
+- repo structure changes
+- an approved live path changes
+- the operating model changes
+
+If meaningful work happened during the day and no push occurred, perform an end-of-day push or explicit park.

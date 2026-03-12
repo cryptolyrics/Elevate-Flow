@@ -1,0 +1,75 @@
+{
+  "task_id": "task-jj-player-parlay-20260312-002",
+  "title": "Pivot to full-slate NBA player prop ranking (not SGP)",
+  "status": "IN_PROGRESS",
+  "owner_agent": "vlad",
+  "reviewer_agent": "pete",
+  "support_agent": "baby-vlad",
+  "created_at": "2026-03-12T14:53:00.000Z",
+  "created_by": "jj",
+  "priority": "P1",
+  "source": "jax-orchestration",
+  "summary": "Pivot from SGP to full-slate NBA player prop scanning with net-edge ranking",
+  "build_location": "~/pete_engine_v2",
+  "source_spec": "~/.openclaw/workspace-pete/CROSS-SLATE-PLAYER-PROPS-SPEC.md",
+  "implementation_targets": [
+    "~/pete_engine_v2/docs/cross-slate-player-props-spec.md",
+    "~/pete_engine_v2/src/pete_engine/brain/player_props.py",
+    "~/pete_engine_v2/src/pete_engine/brain/injury_context.py",
+    "optional: ~/pete_engine_v2/src/pete_engine/brain/prop_ranking.py",
+    "tests: ~/pete_engine_v2/tests/test_player_props_ranking.py",
+    "tests: ~/pete_engine_v2/tests/test_injury_gtd_logic.py"
+  ],
+  "core_requirements": [
+    "Full-slate player prop scanning across all NBA games",
+    "Net-edge ranking logic",
+    "Injury + GTD integration",
+    "No-bet / blocked discipline",
+    "Auditable output with reason codes"
+  ],
+  "build_rules": [
+    "Same-game parlays are no longer the primary product",
+    "Single props are the main decision unit",
+    "Confirmed OUT can create bounded opportunity uplift",
+    "GTD must reduce confidence, not create fake directional conviction",
+    "Stale/conflicted data must penalise or fail closed",
+    "No forced picks",
+    "No hidden logic",
+    "No wrapper-only implementation of quant rules"
+  ],
+  "required_proof_before_pete_review": [
+    "Code diff",
+    "Tests passing",
+    "One full-slate run artifact",
+    "At least one CANDIDATE",
+    "At least one NO_BET",
+    "At least one BLOCKED",
+    "Ranked output showing net-edge ordering",
+    "Reason codes and injury/GTD fields visible in artifacts"
+  ],
+  "quant_gate": "Pete review is binding before treated as ready",
+  "needs_jax": [
+    "If scoring model changes materially",
+    "If edge threshold changes",
+    "If injury/GTD policy changes"
+  ],
+  "status_expectation": "Task begins QUEUED. Moves to RUNNING only after real proof: code diff, first test run, or first artifact.",
+  "next_action": "Run full-slate scan, produce first CANDIDATE/NO_BET/BLOCKED artifacts",
+  "state_reason": "Execution proof: git status in ~/pete_engine_v2 verified modified files, proof command successful",
+  "history": [
+    {
+      "packet_id": "pkt-player-parlay-20260312-002",
+      "task_id": "task-jj-player-parlay-20260312-002",
+      "actor_id": "vlad",
+      "action": "task.start",
+      "from_status": "QUEUED",
+      "to_status": "IN_PROGRESS",
+      "packet_timestamp": "2026-03-12T11:35:07Z",
+      "accepted_at": "2026-03-12T11:35:07Z",
+      "note": "Execution proof: git status in ~/pete_engine_v2 shows modified files, proof command verified"
+    }
+  ],
+  "last_packet_id": "pkt-player-parlay-20260312-002",
+  "last_packet_timestamp": "2026-03-12T11:35:07Z",
+  "last_accepted_at": "2026-03-12T11:35:07Z"
+}

@@ -32,6 +32,10 @@ For multi-agent work:
 - hidden/internal dispatch may support execution, but is not the main operating surface
 - active work must be reported from observable proof
 - technical completion means runnable, review-complete, and usable for the next real step
+- canonical closeout is not enough on its own when a task completes
+- when a task completes, the responsible orchestrator must post a visible completion update
+- Telegram/group chat is not the agent-to-agent dispatch path
+- specialist routing must happen through the real internal session/runtime path
 
 Observable proof includes one or more of:
 - active runtime/session
@@ -39,6 +43,9 @@ Observable proof includes one or more of:
 - tests or jobs started
 - reviewer checkpoint with evidence
 - concrete runtime output
+
+For technical tasks, proof must include the exact repo/path being used.
+If a technical task is running in the wrong repo/path, that work is reference only until re-executed in the approved location.
 
 Mission Control, dashboards, status docs, and visibility surfaces are not canonical task truth.
 Canonical operational truth lives under `tasks/` and approved memory surfaces.
@@ -102,6 +109,8 @@ A task is done when:
 - passes security checks and relevant risk review
 - usable for the intended next step
 - reviewer approval is complete where required
+- visible completion reporting has been posted where the workflow requires team visibility
+- canonical task-state, events, and index are consistent with the reported state
 
 ## Where Details Live
 - `/sops` — secrets and SOPs
@@ -112,6 +121,9 @@ A task is done when:
 - `/logs` — daily logs and audit trail
 - `/decisions` — decision records
 - `/tasks` — canonical task-state
+
+Runtime/build artifacts should live with the owning runtime/build repo, not in orchestration workspaces by default.
+Orchestration workspaces may keep summaries and handoff notes, not specialist engine outputs as the primary storage location.
 
 ## Memory Discipline
 - Daily notes: `memory/YYYY-MM-DD.md` — raw logs

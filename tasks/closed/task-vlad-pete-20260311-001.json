@@ -1,7 +1,8 @@
 {
   "task_id": "task-vlad-pete-20260311-001",
   "title": "Execute narrow Pete V2 progression under the new operating model",
-  "status": "IN_PROGRESS",
+  "status": "DONE",
+  "closeout_note": "Player parlay first-pass complete through Slice 10 (strict contract). 10 slices executed, all approved. NO_BET returned when no valid candidate found - correct fail-closed behavior. Next: requires SGP combo price resolver for live CANDIDATE production.",
   "owner_agent": "vlad",
   "reviewer_agent": "jj",
   "created_at": "2026-03-11T09:42:08.730Z",
@@ -47,6 +48,17 @@
       "to_status": "IN_PROGRESS",
       "packet_timestamp": "2026-03-11T09:42:08.712Z",
       "accepted_at": "2026-03-11T09:42:08.741Z"
+    },
+    {
+      "packet_id": "pkt-vlad-pete-20260312-001",
+      "task_id": "task-vlad-pete-20260311-001",
+      "actor_id": "jj",
+      "action": "task.complete",
+      "from_status": "IN_PROGRESS",
+      "to_status": "DONE",
+      "packet_timestamp": "2026-03-12T14:46:00.000Z",
+      "accepted_at": "2026-03-12T14:46:00.000Z",
+      "closeout_note": "Player parlay first-pass complete through Slice 10 (strict contract). 10 slices executed, all approved. NO_BET returned when no valid candidate found - correct fail-closed behavior. Next: requires SGP combo price resolver for live CANDIDATE production."
     }
   ],
   "tags": [
@@ -56,8 +68,7 @@
   ],
   "project": "elevate-flow-v2",
   "mission_link": "factory-operational",
-  "last_packet_id": "pkt-vlad-pete-20260311-003",
-  "last_packet_timestamp": "2026-03-11T09:42:08.712Z",
-  "last_accepted_at": "2026-03-11T09:42:08.741Z",
-  "next_action": "Progress best-bet optimisation and lock player parlay first-pass plan"
+  "last_packet_id": "pkt-vlad-pete-20260312-001",
+  "last_packet_timestamp": "2026-03-12T14:46:00.000Z",
+  "last_accepted_at": "2026-03-12T14:46:00.000Z"
 }

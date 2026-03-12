@@ -1,0 +1,121 @@
+{
+  "task_id": "task-jj-gas-miniapp-20260312-001",
+  "title": "Rebuild GAS lottery Telegram mini-app with wallet portfolio intake",
+  "status": "QUEUED",
+  "owner_agent": "vlad",
+  "reviewer_agent": "jj",
+  "support_agent": "baby-vlad",
+  "created_at": "2026-03-12T16:00:00.000Z",
+  "created_by": "jj",
+  "priority": "P1",
+  "source": "jax-orchestration",
+  "summary": "Build GAS lottery Telegram mini-app with wallet portfolio intake and token eligibility",
+  "build_location": "TBD - Vlad to determine after audit and architecture confirmation",
+  "legacy_reference_only": [
+    "~/.openclaw/workspace/PROJECTS/Gift-a-Shit-Lottery.md",
+    "~/.openclaw/workspace/PROJECTS/GAS-Lottery-Design-UX-Plan.md",
+    "~/.openclaw/workspace/gas-miniapp/"
+  ],
+  "purpose": "Rebuild GAS as Telegram mini-app that lets users connect wallet, detect eligible low-value tokens with real market/liquidity, estimate ticket buying power, and complete purchase through clean wallet execution flow",
+  "core_product_rule": "Mini-app must surface ticket-buying power from supported low-value tokens that still have real market/liquidity. Wallet connection required for portfolio read and valuation, not just signing.",
+  "key_constraints": [
+    "Do not treat old GAS files as current source of truth",
+    "Use legacy GAS materials as reference only",
+    "Do not assume internal embedded wallet flow is default",
+    "Do not assume all wallet operations inside Telegram webview",
+    "Token eligibility and valuation must be explicit, conservative, fail closed"
+  ],
+  "architecture_stance": [
+    "Telegram mini-app is primary product surface",
+    "Telegram identity/session layer is first-class",
+    "Wallet connection supports portfolio read",
+    "Eligible token balances valued conservatively",
+    "Mini-app shows estimated ticket count from eligible holdings",
+    "Purchase intent and ticket issuance through backend truth",
+    "Wallet execution flow may hand off externally if needed"
+  ],
+  "v1_scope": [
+    "Telegram mini-app shell",
+    "Telegram-first identity/session flow",
+    "Wallet connect path for portfolio read",
+    "Supported token discovery",
+    "Token eligibility rules",
+    "Conservative valuation rules",
+    "Ticket buying power calculator",
+    "Purchase intent backend flow",
+    "Ticket issuance flow",
+    "Confirmation/receipt surface",
+    "Telegram bot confirmation message path"
+  ],
+  "product_outputs": [
+    "Connected wallet address visible in mini-app",
+    "Supported token list visible in mini-app",
+    "Eligible vs ineligible token distinction",
+    "Estimated ticket count from eligible token value",
+    "Reason codes when tokens excluded or discounted",
+    "Purchase confirmation state",
+    "Ticket receipt state"
+  ],
+  "token_eligibility_requirements": [
+    "Approved chain/network",
+    "Approved pricing source",
+    "Approved liquidity source",
+    "Minimum liquidity threshold met",
+    "Minimum price confidence threshold met",
+    "Not blocked/flagged/unsupported",
+    "Valuation bounded conservatively",
+    "Stale/missing pricing reduces value or excludes"
+  ],
+  "non_goals": [
+    "Universal support for any token",
+    "Vague all wallet assets count behavior",
+    "Hidden valuation logic",
+    "Complex swap routing across every chain",
+    "Internal wallet custody as mandatory default",
+    "Perfect cross-wallet magic inside webview",
+    "Advanced portfolio management",
+    "Speculative pricing of illiquid dust",
+    "Legal/compliance assumptions in implementation"
+  ],
+  "execution_ownership_rule": "Vlad is single build owner. Baby Vlad spawned by Vlad only under Vlad ownership. Baby Vlad acts as implementation support and review-support lens. JJ does not route directly to Baby Vlad as primary owner.",
+  "acceptance_criteria": [
+    "Fresh architecture brief produced",
+    "Legacy prototype audited",
+    "Reusable vs rewrite components listed",
+    "Wallet portfolio read path demonstrated",
+    "Supported token eligibility rules documented",
+    "Mini-app shows eligible token buying power",
+    "Mini-app shows estimated ticket count",
+    "Explicit examples exist for: supported token counted, illiquid token excluded, stale pricing excluded or discounted, blocked/unsupported token excluded",
+    "Purchase intent flow documented or demonstrated",
+    "One reviewable checkpoint artifact exists",
+    "No implementation drift beyond approved V1 scope"
+  ],
+  "required_proof": [
+    "Code diff",
+    "Architecture brief",
+    "Checklist of reusable legacy assets",
+    "Token eligibility spec",
+    "One artifact/screenshot/output showing: wallet connected, token balances scanned, eligible value, ticket estimate, exclusion reason codes"
+  ],
+  "checkpoint_rule": "Vlad must not disappear into broad rebuild mode. First checkpoint should be architecture + wallet-read proof, not full product completion. Baby Vlad may be spawned by Vlad to tighten implementation, tests, edge cases, and checkpoint reviewability before JJ review.",
+  "suggested_first_slice": [
+    "Audit old gas-miniapp",
+    "Define current architecture",
+    "Select wallet/session approach",
+    "Implement wallet read path",
+    "Show buying power estimate from a controlled supported-token set"
+  ],
+  "needs_jax": [
+    "If chain/payment rail changes materially",
+    "If token eligibility policy changes materially",
+    "If custody model changes",
+    "If scope expands beyond V1"
+  ],
+  "status_expectation": "Task begins QUEUED. Moves to RUNNING only after real proof: first file change, first architecture brief, first wallet read proof, or first checkpoint artifact.",
+  "artifacts": [],
+  "tags": ["vlad", "baby-vlad", "gas", "telegram", "miniapp", "wallet", "execution"],
+  "project": "gas-lottery",
+  "mission_link": "gas-miniapp-build",
+  "next_action": "Vlad to audit legacy materials, determine build location, produce first proof to move from QUEUED to running"
+}

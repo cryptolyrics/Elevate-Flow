@@ -16,61 +16,46 @@
 
 > **"Git main is canon. Workspaces are pointers only."**
 
-- `main` branch on all repos = source of truth
-- Agent workspaces are local copies/pointers
-- Submodules track specific commits from agent repos
+- `main` branch on canon repos = source of truth
+- Agent workspaces are local execution mirrors
+- External runtimes and service layers must follow explicit repo boundaries
 
-## Agent Repos (Submodules)
+## External Runtime Repos
 
-| Submodule | Repo URL | Purpose |
-|-----------|----------|---------|
-| agents/pete-engine | github.com/cryptolyrics/pete-engine | DFS optimization |
-| agents/ali_growth_engine | github.com/cryptolyrics/ali_growth_engine | Growth operations |
+| Runtime | Repo URL | Purpose |
+|---------|----------|---------|
+| Pete Engine | github.com/cryptolyrics/pete-engine | Quant runtime and wagering logic |
+| Ali Growth Engine | github.com/cryptolyrics/ali_growth_engine | Growth operations |
 
-## NBA Data Timing Rule 🇦🇺→🇺🇸
+## Factory Control-Plane Boundary
 
-**Australia (AEST/AEDT) is always one day ahead of the US NBA schedule.**
+Elevate Flow keeps the factory operating layer:
+- canon docs and contracts
+- agent definitions
+- Clerk and task-state normalization
+- routing, monitoring, and guardrails
 
-- NBA games are played in the US on date X (e.g., March 6)
-- In Australia, it's already date X+1 (March 7)
-- Tank01/Draftstars data for "tonight's" games is available the **previous day** in AU time
+Elevate Flow does not own Pete runtime execution logic.
+That remains external to the control-plane repo.
 
-**Operational Law:**
-- Run DFS data collection on the **day before** the NBA date you want to bet
-- Example: For March 6 NBA games, pull data on March 5 AU time
-- The cron job should run at ~8-9am AU time on the day prior to capture evening US games
+## Task-State Model
 
-### USA Timezone Implementation in Pete's Code
+Canonical task truth lives under:
+- `tasks/open/*.json`
+- `tasks/closed/*.json`
+- `tasks/events/YYYY-MM-DD.jsonl`
+- `tasks/index.json`
 
-Pete's pipeline (`pete-nba-pipeline.py`) now uses **USA Eastern Time** as the reference for all NBA data:
+Rendered visibility layers:
+- `TASKS.md`
+- `STATUS.md`
 
-1. **Automatic USA Date Calculation:**
-   - The `get_usa_date()` function converts local AU time to USA Eastern Time
-   - Uses `zoneinfo.ZoneInfo("America/New_York")` when available (Python 3.9+)
-   - Falls back to manual calculation (~14 hours behind AU time)
+Rendered markdown is visibility only, not source of truth.
 
-2. **Data File Naming:**
-   - All Tank01 API calls use USA date (e.g., `2026-03-05.json`)
-   - Data files are saved with USA date in filename
-   - Example: If it's March 6 in Australia, files are named `2026-03-05.json` (USA date)
+## Pete Timing Note
 
-3. **API Calls:**
-   - Tank01 API `gameDate` parameter uses USA date
-   - All date-dependent operations default to USA date
-   - `--date` argument accepts USA date in YYYY-MM-DD format
-
-4. **Why This Matters:**
-   - NBA games are scheduled in US time zone
-   - "Tonight's" games in the US correspond to tomorrow in Australia
-   - Running data collection with AU date would fetch wrong day's games
-   - Using USA date ensures we always get the correct NBA schedule
+Australia is typically ahead of US market time, so Pete runtime date handling should follow the active external Pete Engine runtime rules, not local mirror assumptions.
 
 ## Sync Protocol
 
-Run `scripts/sync.sh` to sync local state with canon:
-
-```bash
-./scripts/sync.sh
-```
-
-This fetches latest, resets to origin/main, and updates submodules.
+Run `scripts/sync.sh` to sync local state with canon when that script is still part of the active workspace contract.

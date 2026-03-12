@@ -1,0 +1,61 @@
+{
+  "task_id": "task-jj-botd-probability-20260313-001",
+  "title": "Rebuild Bet of the Day probability model with injury/GTD/freshness handling",
+  "status": "QUEUED",
+  "owner_agent": "vlad",
+  "reviewer_agent": "pete",
+  "priority": "P1",
+  "source": "jax-orchestration",
+  "summary": "Fix Bet of the Day probability model to incorporate injury/GTD/freshness context properly",
+  "execution_ownership": {
+    "owner": "vlad",
+    "support": "baby-vlad (spawned by Vlad only)",
+    "reviewer": "pete (binding)",
+    "orchestration": "jj"
+  },
+  "build_location": "~/pete_engine_v2",
+  "reference_inputs": [
+    "~/pete_engine_v2/src/pete_engine/brain/best_bet.py",
+    "~/pete_engine_v2/src/pete_engine/brain/injury_context.py",
+    "Tank01 injury data sources"
+  ],
+  "current_problems": [
+    "Probability logic is too blunt: model = implied + team_boost is just market price + flat adjustment",
+    "No injury context: team bets should factor in injuries but currently don't",
+    "No GTD handling: key players GTD should increase uncertainty, not boost confidence",
+    "No uncertainty penalty: should penalize edge for stale data, missing support, incomplete slate"
+  ],
+  "required_changes": [
+    "Rebuild probability model - remove hard floor clamp(model, 0.01, 0.95), build real expected margin logic, add bounded uncertainty penalty",
+    "Add injury context - pull injury data from Tank01, factor confirmed OUTs into team strength, apply bounded adjustments",
+    "Add GTD handling - key player GTD = uncertainty penalty, do not boost probability",
+    "Freshness enforcement - stale source = automatic NO_BET, make this automatic in the pipeline"
+  ],
+  "guardrails": [
+    "do not use fake precision around injury or role changes",
+    "GTD is uncertainty, not directional signal",
+    "stale data must result in NO_BET",
+    "bounded adjustments only",
+    "no hard floor clamp that hides real model output"
+  ],
+  "acceptance_criteria": [
+    "code diff showing probability model rebuild",
+    "tests passing",
+    "one full-slate run with honest probability logic",
+    "injury context visible in output",
+    "GTD handling visible in output",
+    "freshness enforcement visible in output",
+    "visible thresholds for: candidate threshold, no-bet threshold, blocked conditions"
+  ],
+  "quant_gate_conditions": {
+    "reject_if": [
+      "GTD treated as directional boost",
+      "stale data still produces candidates without penalty",
+      "probability model still uses blunt flat adjustment",
+      "bounded adjustments are exceeded"
+    ]
+  },
+  "tags": ["vlad", "pete", "bet-of-the-day", "probability", "quant", "execution"],
+  "project": "elevate-flow-v2",
+  "mission_link": "botd-probability-rebuild"
+}
