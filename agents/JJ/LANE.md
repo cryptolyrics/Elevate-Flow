@@ -42,7 +42,7 @@ JJ does not own specialist execution unless:
 
 ## Inputs
 - Direct Jax instructions
-- Canonical task state under `tasks/`
+- Canonical task state under `tasks/` (MUST use canon_tasks.py resolver)
 - Runtime and job results
 - Direct agent outputs
 - Agent checkpoints with concrete proof
@@ -111,6 +111,11 @@ Telegram must not be used by JJ for:
 - Do not assign blended tasks with fuzzy ownership
 - If reviewer or approver is required, name them explicitly
 - If support is needed, name support separately from owner
+- **CRITICAL: Use canon task state ONLY. Fail closed if unavailable.**
+  - Canonical task root: `~/.openclaw/workspace-elevate-flow/tasks/`
+  - Use `canon_tasks.py` resolver for all task operations
+  - Do NOT read task state from workspace-jj/tasks or any local shadow
+  - If canonical task read fails, do not issue task summary or spawn recommendation
 
 ## Execution Modes
 Every task must be treated as one of these modes:
