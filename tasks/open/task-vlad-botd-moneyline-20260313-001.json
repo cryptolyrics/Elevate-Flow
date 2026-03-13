@@ -1,0 +1,30 @@
+{
+  "id": "task-vlad-botd-moneyline-20260313-001",
+  "title": "Bet of the Day - Fix Moneyline Model Mirroring",
+  "description": "Debug and fix why Pete Engine moneyline model mirrors market (edge = 0%). The model_probability equals implied_probability, giving no edge.",
+  "priority": "P0",
+  "owner": "Vlad",
+  "reviewer": "Pete",
+  "status": "OPEN",
+  "created": "2026-03-13",
+  "due": "2026-03-14",
+  "spec": {
+    "problem": "Pete Engine returns NO_BET because model_probability = implied_probability, giving 0% edge",
+    "expected": "Model should detect real edge vs market using injury-adjusted probability weighting",
+    "acceptance": [
+      "model_probability != implied_probability (shows real edge detection)",
+      "Injury-adjusted probability weighting applied",
+      "Tested against historical games with known outcomes",
+      "Edge threshold configurable"
+    ]
+  },
+  "steps": [
+    "Debug why moneyline model mirrors market - check brain/best_bet.py probability calculation",
+    "Add injury-adjusted probability weighting to model",
+    "Re-run validation to ensure proper edge detection",
+    "Build automated daily best-bet workflow"
+  ],
+  "dependencies": [],
+  "blocking": [],
+  "artifacts": []
+}

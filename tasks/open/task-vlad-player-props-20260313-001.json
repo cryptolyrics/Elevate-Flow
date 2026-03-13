@@ -1,0 +1,30 @@
+{
+  "id": "task-vlad-player-props-20260313-001",
+  "title": "Player Props - Fix Injury Filtering & Ranking",
+  "description": "Fix injury data parsing from tank01. Engine returns 'none' for OUT players (e.g. Tatum showed as active). Rebuild prop ranking with injury-aware logic.",
+  "priority": "P0",
+  "owner": "Vlad",
+  "reviewer": "Pete",
+  "status": "OPEN",
+  "created": "2026-03-13",
+  "due": "2026-03-14",
+  "spec": {
+    "problem": "Engine injury filtering returns 'none' for OUT players. Tatum showed as 'active' when he was OUT. Player prop rankings filtering incorrectly.",
+    "expected": "OUT players should be flagged and filtered. Injury impact penalty applied to projections. Prop ranking with injury-aware logic.",
+    "acceptance": [
+      "OUT players correctly identified and filtered from props",
+      "GTD players have uncertainty penalty applied",
+      "Prop ranking shows injury context for each candidate",
+      "Tested against historical injury data - verification passes"
+    ]
+  },
+  "steps": [
+    "Fix injury data parsing from tank01 - check adapters/tank01.py injury field mapping",
+    "Apply injury impact penalty to prop projections",
+    "Rebuild prop ranking with injury-aware logic",
+    "Test against historical injuries to verify filter works"
+  ],
+  "dependencies": [],
+  "blocking": [],
+  "artifacts": []
+}

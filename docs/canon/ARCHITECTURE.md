@@ -59,3 +59,33 @@ Australia is typically ahead of US market time, so Pete runtime date handling sh
 ## Sync Protocol
 
 Run `scripts/sync.sh` to sync local state with canon when that script is still part of the active workspace contract.
+
+### Canon Enforcement Model
+
+**Manifest-Driven Sync:**
+- `CANON-MANIFEST.md` defines which files are canon-managed
+- Each entry: `source_path|target_workspace|target_path`
+- `ALL` syncs to all agent workspaces
+
+**Sync Scripts:**
+- `scripts/sync.sh` — One-way sync from canon to workspaces
+  - Usage: `./scripts/sync.sh [--dry-run] [--verbose]`
+  - Backs up existing files before overwriting
+  - Logs all sync actions to `logs/sync-*.log`
+- `scripts/audit-canon-drift.sh` — Detects drift and stale files
+  - Usage: `./scripts/audit-canon-drift.sh [--verbose] [--fix]`
+  - Reports competing doctrine files
+  - Archives stale files with `.stale` suffix
+
+**Boot Directive:**
+On each agent restart, run sync first:
+```
+./scripts/sync.sh
+./scripts/audit-canon-drift.sh
+```
+
+**Precedence Rules:**
+1. Canon (workspace-elevate-flow) is the sole source of truth
+2. Agent workspaces are runtime mirrors, not doctrine stores
+3. Any SOUL.md/LANE.md outside canon is considered stale
+4. TASKS.md in workspaces is forbidden (use tasks/*.json in canon)

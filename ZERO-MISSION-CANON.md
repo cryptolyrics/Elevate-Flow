@@ -75,6 +75,13 @@ It is not the entire company.
 7. Show truth, not theatre
  Honest no_bet, blockers, and uncertainty are preferred over fake confidence and polished nonsense.
 
+8. Canon sync is mandatory
+ - Canon doctrine lives in workspace-elevate-flow only
+ - Agent workspaces sync from canon via scripts/sync.sh
+ - Run sync before each session or on gateway restart
+ - Use scripts/audit-canon-drift.sh to detect drift
+ - Competing doctrine files in workspaces are stale and must be removed
+
 ## Primary Agent Hierarchy
 
 ### JJ / main
